@@ -13,7 +13,8 @@ import {
   Spin, 
   message, 
   Modal,
-  Space
+  Space,
+  PaginationProps
 } from 'antd';
 import { 
   SearchOutlined, 
@@ -168,17 +169,31 @@ const PlanList: React.FC = () => {
     return difficulty ? colors[difficulty] : 'default';
   };
 
+  // 移动端分页配置
+  const mobilePagination: PaginationProps = {
+    current,
+    total,
+    pageSize,
+    onChange: (page) => setCurrent(page),
+    showSizeChanger: false
+  };
+
+  // 桌面端分页配置
+  const desktopPagination: PaginationProps = {
+    current,
+    total,
+    pageSize,
+    onChange: (page) => setCurrent(page),
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total) => `共 ${total} 条`
+  };
+
   // 移动端显示方式
   const renderMobileList = () => (
     <List
       dataSource={plans}
-      pagination={{
-        current,
-        pageSize,
-        total,
-        onChange: (page) => setCurrent(page),
-        showSizeChanger: false
-      }}
+      pagination={mobilePagination}
       renderItem={plan => (
         <List.Item 
           style={{ padding: 0, marginBottom: 8 }}
@@ -229,15 +244,7 @@ const PlanList: React.FC = () => {
     <List
       grid={{ gutter: 16, xs: 1, sm: 2, md: 2, lg: 3, xl: 4 }}
       dataSource={plans}
-      pagination={{
-        current,
-        pageSize,
-        total,
-        onChange: (page) => setCurrent(page),
-        showSizeChanger: true,
-        showQuickJumper: true,
-        showTotal: (total) => `共 ${total} 条`
-      }}
+      pagination={desktopPagination}
       renderItem={plan => (
         <List.Item>
           <Card
