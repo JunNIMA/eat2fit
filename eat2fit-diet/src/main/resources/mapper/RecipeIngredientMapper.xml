@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eat2fit.diet.mapper.RecipeIngredientMapper">
+
+    <!-- 批量保存食谱食材 -->
+    <insert id="batchSave">
+        INSERT INTO recipe_ingredient 
+        (recipe_id, food_id, name, amount, unit, create_time) 
+        VALUES 
+        <foreach collection="list" item="item" separator=",">
+            (#{recipeId}, #{item.foodId}, #{item.name}, #{item.amount}, #{item.unit}, now())
+        </foreach>
+    </insert>
+
+</mapper> 

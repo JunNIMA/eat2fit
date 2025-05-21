@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: eat2fit-gateway
+  cloud:
+    nacos:
+      server-addr: localhost:8848
+    gateway:
+      routes:
+        - id: user-service # 路由规则id，自定义，唯一
+          uri: lb://eat2fit-user # 路由的目标服务，lb代表负载均衡，会从注册中心拉取服务列表
+          predicates: # 路由断言，判断当前请求是否符合当前规则，符合则路由到目标服务
+            - Path=/user/** # 这里是以请求路径作为判断规则
+        - id: fitness-service
+          uri: lb://eat2fit-fitness
+          predicates:
+            - Path=/fitness/**
+        - id: diet-service
+          uri: lb://eat2fit-diet
+          predicates:
+            - Path=/diet/**
+        - id: ai-service
+          uri: lb://eat2fit-ai
+          predicates:
+            - Path=/ai/**
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: debug
+    reactor.netty.http.client: debug
+
+ef:
+  auth:
+    excludePaths:
+      - /user/login
+      - /user/register

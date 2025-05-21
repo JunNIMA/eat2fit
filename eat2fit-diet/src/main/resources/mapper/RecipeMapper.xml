@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eat2fit.diet.mapper.RecipeMapper">
+
+    <!-- 增加浏览次数 -->
+    <update id="increaseViewCount">
+        UPDATE recipe 
+        SET view_count = view_count + 1 
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 增加或减少点赞次数 -->
+    <update id="updateLikeCount">
+        UPDATE recipe 
+        SET like_count = 
+            <if test="increment">
+                like_count + 1
+            </if>
+            <if test="!increment">
+                CASE WHEN like_count > 0 THEN like_count - 1 ELSE 0 END
+            </if>
+        WHERE id = #{id}
+    </update>
+
+</mapper> 

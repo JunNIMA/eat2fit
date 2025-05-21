@@ -1,0 +1,25 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: eat2fit-ai
+  ai:
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      api-key: sk-0aa931ec0a8c4889a0692514518e8e0a
+      chat:
+        options:
+          model: qwen-max-latest
+      embedding:
+        options:
+          model: text-embedding-v3
+          dimensions: 1024
+  cloud:
+    nacos:
+      server-addr: localhost:8848
+      
+logging:
+  level:
+    org.springframework.ai: debug
+    com.eat2fit.ai: debug
