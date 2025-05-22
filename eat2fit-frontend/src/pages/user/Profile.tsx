@@ -5,6 +5,7 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { updateUserInfo } from '@/api/user';
 import { fetchUserInfo } from '@/store/slices/userSlice';
 import { handleApiError } from '@/utils/errorHandler';
+import { getToken } from '@/utils/auth';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -45,6 +46,7 @@ const Profile = () => {
   useEffect(() => {
     if (info) {
       form.setFieldsValue({
+        username: info.username,
         nickname: info.nickname,
         email: info.email,
         phone: info.phone,
@@ -91,11 +93,37 @@ const Profile = () => {
               <div style={{ textAlign: 'center' }}>
                 <Avatar 
                   size={100} 
-                  src={user?.avatar} 
+                  src={info?.avatar} 
                   icon={<UserOutlined />} 
                   style={{ marginBottom: 16 }}
                 />
-                <Upload showUploadList={false}>
+                <Upload 
+                  showUploadList={false}
+                  action="/api/user/profile"
+                  name="file"
+                  headers={{
+                    Authorization: `Bearer ${getToken()}`
+                  }}
+                  onChange={(info) => {
+                    if (info.file.status === 'done') {
+                      const avatarUrl = info.file.response.data;
+                      // 更新用户头像
+                      if (user?.userId) {
+                        updateUserInfo(user.userId, { avatar: avatarUrl })
+                          .then(() => {
+                            message.success('头像更新成功');
+                            // 重新获取用户信息
+                            dispatch(fetchUserInfo(user.userId));
+                          })
+                          .catch(() => {
+                            message.error('头像更新失败');
+                          });
+                      }
+                    } else if (info.file.status === 'error') {
+                      message.error('头像上传失败');
+                    }
+                  }}
+                >
                   <Button icon={<UploadOutlined />}>更换头像</Button>
                 </Upload>
               </div>
