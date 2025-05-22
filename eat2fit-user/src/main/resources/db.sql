@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `user` (
 -- 用户身体数据记录表（保留，用于记录用户身体变化）
 CREATE TABLE IF NOT EXISTS `user_body_record` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `user_id` bigint(2000) NOT NULL COMMENT '用户ID',
   `weight` decimal(5,2) DEFAULT NULL COMMENT '体重（公斤）',
   `body_fat` decimal(5,2) DEFAULT NULL COMMENT '体脂率（%）',
   `bmi` decimal(5,2) DEFAULT NULL COMMENT 'BMI指数',
