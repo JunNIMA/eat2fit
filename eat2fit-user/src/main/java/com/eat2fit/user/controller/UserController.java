@@ -1,24 +1,33 @@
 package com.eat2fit.user.controller;
 
 import com.eat2fit.common.response.Result;
+import com.eat2fit.common.util.AliyunOSSOperator;
 import com.eat2fit.user.dto.UserLoginDTO;
 import com.eat2fit.user.dto.UserRegisterDTO;
 import com.eat2fit.user.service.UserService;
 import com.eat2fit.user.vo.LoginVO;
 import com.eat2fit.user.vo.UserVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 /**
  * 用户控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/user")
 public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private AliyunOSSOperator aliyunOSSOperator;
 
     /**
      * 注册
@@ -83,5 +92,18 @@ public class UserController {
     public Result<Boolean> checkEmailExists(@PathVariable String email) {
         boolean exists = userService.checkEmailExists(email);
         return Result.success(exists);
+    }
+
+    /**
+     * 上传头像
+     */
+    @PostMapping("/profile")
+    public Result<String> uploadProfile(MultipartFile file) throws Exception {
+        log.info("上传文件: {}", file.getOriginalFilename());
+        //  上传文件交给阿里云OSS
+        aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+        String fileUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+        log.info("上传文件成功OSS,url: {}", fileUrl);
+        return Result.success(fileUrl);
     }
 } 

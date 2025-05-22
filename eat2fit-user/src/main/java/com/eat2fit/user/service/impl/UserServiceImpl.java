@@ -125,7 +125,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         updateUser.setAge(userVO.getAge());
         updateUser.setHeight(userVO.getHeight());
         updateUser.setWeight(userVO.getWeight());
-        
+        updateUser.setFitnessGoal(userVO.getFitnessGoal());
+        updateUser.setEmail(userVO.getEmail());
+        updateUser.setPhone(userVO.getPhone());
         return updateById(updateUser);
     }
 

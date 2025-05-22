@@ -26,6 +26,7 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector(state => state.auth);
+  const { info } = useAppSelector(state => state.user);
   
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -393,12 +394,12 @@ const MainLayout: React.FC = () => {
               <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                 <Avatar 
                   size="large" 
-                  src={user?.avatar}
-                  icon={!user?.avatar && <UserOutlined />} 
+                  src={info?.avatar}
+                  icon={!info?.avatar && <UserOutlined />} 
                 />
                 {!isMobile && (
                   <span style={{ marginLeft: 8 }}>
-                    {user?.nickname || user?.username || '用户'}
+                    {info?.nickname || user?.username || '用户'}
                   </span>
                 )}
               </div>
