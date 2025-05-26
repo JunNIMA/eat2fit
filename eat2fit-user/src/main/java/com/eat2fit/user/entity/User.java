@@ -82,7 +82,11 @@ public class User implements Serializable {
      * 健身目标 1:增肌 2:减脂 3:塑形 4:维持
      */
     private Integer fitnessGoal;
-
+    
+    /**
+     * 用户角色 0:普通用户 1:管理员
+     */
+    private Integer role;
 
     /**
      * 创建时间

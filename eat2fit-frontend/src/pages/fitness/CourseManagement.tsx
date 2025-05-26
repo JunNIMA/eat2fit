@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   Card, 
   Table, 
@@ -11,17 +11,27 @@ import {
   InputNumber, 
   message, 
   Popconfirm,
-  Tag
+  Tag,
+  Upload,
+  Row,
+  Col,
+  Image
 } from 'antd';
 import { 
   PlusOutlined, 
   EditOutlined, 
   DeleteOutlined,
-  ExclamationCircleOutlined
+  UploadOutlined,
+  LoadingOutlined,
+  VideoCameraOutlined
 } from '@ant-design/icons';
 import { getCourses, addCourse, updateCourse, deleteCourse, Course } from '@/api/fitness';
 import type { QueryParams } from '@/api/fitness';
 import { useAppSelector } from '@/store/hooks';
+import { createCancelToken } from '@/utils/request';
+import axios, { CancelTokenSource } from 'axios';
+import type { RcFile, UploadProps } from 'antd/es/upload';
+import { getToken } from '@/utils/auth';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -38,37 +48,71 @@ const CourseManagement: React.FC = () => {
   const [currentCourse, setCurrentCourse] = useState<Partial<Course>>({});
   const [form] = Form.useForm();
 
+  const [coverImgUrl, setCoverImgUrl] = useState<string>('');
+  const [videoUrl, setVideoUrl] = useState<string>('');
+  const [coverUploadLoading, setCoverUploadLoading] = useState<boolean>(false);
+  const [videoUploadLoading, setVideoUploadLoading] = useState<boolean>(false);
+
+  // 用于取消API请求的令牌
+  const coursesTokenRef = useRef<CancelTokenSource | null>(null);
+  const actionTokenRef = useRef<CancelTokenSource | null>(null);
+
   // 检查当前用户是否有管理权限
-  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN');
+  const isAdmin = user?.role === 1;
 
-  useEffect(() => {
-    fetchCourses();
-  }, [current, pageSize]);
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
+    // 取消先前的请求
+    if (coursesTokenRef.current) {
+      coursesTokenRef.current.cancel('新请求发起，取消旧请求');
+    }
+    
+    // 创建新的取消令牌
+    coursesTokenRef.current = createCancelToken();
+    
     setLoading(true);
     try {
       const params: QueryParams = {
         current,
         size: pageSize
       };
-      const response = await getCourses(params);
+      
+      const response = await getCourses(params, coursesTokenRef.current);
       if (response.success) {
         setCourses(response.data.records);
         setTotal(response.data.total);
       } else {
         message.error(response.message || '获取课程列表失败');
       }
-    } catch (error) {
-      message.error('网络错误，请稍后重试');
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.log('获取课程列表请求已取消:', error.message);
+      } else {
+        message.error('网络错误，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [current, pageSize]);
+
+  useEffect(() => {
+    fetchCourses();
+    
+    // 组件卸载时取消所有请求
+    return () => {
+      if (coursesTokenRef.current) {
+        coursesTokenRef.current.cancel('组件卸载，取消请求');
+      }
+      if (actionTokenRef.current) {
+        actionTokenRef.current.cancel('组件卸载，取消请求');
+      }
+    };
+  }, [fetchCourses]);
 
   const handleAdd = () => {
     setCurrentCourse({});
     form.resetFields();
+    setCoverImgUrl('');
+    setVideoUrl('');
     setModalVisible(true);
   };
 
@@ -77,54 +121,122 @@ const CourseManagement: React.FC = () => {
     form.setFieldsValue({
       ...record
     });
+    setCoverImgUrl(record.coverImg || '');
+    setVideoUrl(record.videoUrl || '');
     setModalVisible(true);
   };
 
-  const handleDelete = (id: number) => {
-    confirm({
-      title: '确认删除',
-      icon: <ExclamationCircleOutlined />,
-      content: '删除后将无法恢复，是否确认删除？',
-      onOk: async () => {
-        try {
-          const response = await deleteCourse(id);
-          if (response.success) {
-            message.success('删除成功');
-            fetchCourses();
-          } else {
-            message.error(response.message || '删除失败');
-          }
-        } catch (error) {
-          message.error('网络错误，请稍后重试');
-        }
+  const handleDelete = async (id: number) => {
+    try {
+      // 取消先前的请求
+      if (actionTokenRef.current) {
+        actionTokenRef.current.cancel('新请求发起，取消旧请求');
       }
-    });
+      
+      // 创建新的取消令牌
+      actionTokenRef.current = createCancelToken();
+      
+      const response = await deleteCourse(id);
+      if (response.success) {
+        message.success('删除课程成功');
+        fetchCourses();
+      } else {
+        message.error(response.message || '删除失败');
+      }
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.log('删除课程请求已取消:', error.message);
+      } else {
+        message.error('删除失败，请稍后重试');
+      }
+    }
   };
 
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      const saveData = {
-        ...values,
-        id: currentCourse.id
-      };
-
+      
+      // 取消先前的请求
+      if (actionTokenRef.current) {
+        actionTokenRef.current.cancel('新请求发起，取消旧请求');
+      }
+      
+      // 创建新的取消令牌
+      actionTokenRef.current = createCancelToken();
+      
       let response;
       if (currentCourse.id) {
-        response = await updateCourse(saveData);
+        // 更新课程
+        const updateData = {
+          ...values,
+          id: currentCourse.id
+        };
+        response = await updateCourse(updateData);
       } else {
-        response = await addCourse(saveData);
+        // 添加课程
+        response = await addCourse(values);
       }
-
+      
       if (response.success) {
-        message.success(`${currentCourse.id ? '更新' : '添加'}成功`);
-        setModalVisible(false);
+        message.success(currentCourse.id ? '更新课程成功' : '添加课程成功');
+        handleCloseModal();
         fetchCourses();
       } else {
-        message.error(response.message || `${currentCourse.id ? '更新' : '添加'}失败`);
+        message.error(response.message || '操作失败');
       }
-    } catch (error) {
-      message.error('表单验证失败，请检查输入');
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.log('保存课程请求已取消:', error.message);
+      } else {
+        message.error('表单验证失败，请检查输入');
+      }
+    }
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    form.resetFields();
+    setCoverImgUrl('');
+    setVideoUrl('');
+  };
+
+  const handleCoverUpload = (info: any) => {
+    if (info.file.status === 'uploading') {
+      setCoverUploadLoading(true);
+      return;
+    }
+    
+    if (info.file.status === 'done') {
+      setCoverUploadLoading(false);
+      // 获取上传后的URL
+      const imgUrl = info.file.response.data;
+      // 设置表单值
+      form.setFieldsValue({ coverImg: imgUrl });
+      setCoverImgUrl(imgUrl);
+      message.success('封面图片上传成功');
+    } else if (info.file.status === 'error') {
+      setCoverUploadLoading(false);
+      message.error('封面图片上传失败');
+    }
+  };
+
+  const handleVideoUpload = (info: any) => {
+    if (info.file.status === 'uploading') {
+      setVideoUploadLoading(true);
+      return;
+    }
+    
+    if (info.file.status === 'done') {
+      setVideoUploadLoading(false);
+      // 获取上传后的URL
+      const videoUrl = info.file.response.data;
+      // 设置表单值
+      form.setFieldsValue({ videoUrl: videoUrl });
+      setVideoUrl(videoUrl);
+      message.success('视频上传成功');
+    } else if (info.file.status === 'error') {
+      setVideoUploadLoading(false);
+      message.error('视频上传失败');
     }
   };
 
@@ -147,14 +259,23 @@ const CourseManagement: React.FC = () => {
     }
   };
 
-  const getColorByGoal = (goal: number): string => {
-    const colors = ['', 'green', 'blue', 'purple', 'orange'];
-    return colors[goal] || 'default';
+  const getDifficultyColor = (difficulty: number): string => {
+    switch (difficulty) {
+      case 1: return 'cyan';
+      case 2: return 'gold';
+      case 3: return 'magenta';
+      default: return 'default';
+    }
   };
 
-  const getColorByDifficulty = (difficulty: number): string => {
-    const colors = ['', 'cyan', 'gold', 'magenta'];
-    return colors[difficulty] || 'default';
+  const getGoalColor = (goal: number): string => {
+    switch (goal) {
+      case 1: return 'green';
+      case 2: return 'blue';
+      case 3: return 'purple';
+      case 4: return 'orange';
+      default: return 'default';
+    }
   };
 
   const columns = [
@@ -163,6 +284,26 @@ const CourseManagement: React.FC = () => {
       dataIndex: 'id',
       key: 'id',
       width: 70
+    },
+    {
+      title: '封面',
+      dataIndex: 'coverImg',
+      key: 'coverImg',
+      width: 100,
+      render: (coverImg: string) => (
+        coverImg ? (
+          <Image 
+            src={coverImg} 
+            width={80} 
+            height={45} 
+            style={{ objectFit: 'cover', borderRadius: '4px' }} 
+            preview={{ 
+              src: coverImg,
+              mask: '预览'
+            }}
+          />
+        ) : '无封面'
+      )
     },
     {
       title: '标题',
@@ -180,9 +321,9 @@ const CourseManagement: React.FC = () => {
       title: '难度',
       dataIndex: 'difficulty',
       key: 'difficulty',
-      width: 100,
+      width: 80,
       render: (difficulty: number) => (
-        <Tag color={getColorByDifficulty(difficulty)}>
+        <Tag color={getDifficultyColor(difficulty)}>
           {getDifficultyText(difficulty)}
         </Tag>
       )
@@ -191,39 +332,40 @@ const CourseManagement: React.FC = () => {
       title: '健身目标',
       dataIndex: 'fitnessGoal',
       key: 'fitnessGoal',
-      width: 100,
+      width: 80,
       render: (goal: number) => (
-        <Tag color={getColorByGoal(goal)}>
+        <Tag color={getGoalColor(goal)}>
           {getFitnessGoalText(goal)}
         </Tag>
       )
     },
     {
-      title: '观看次数',
-      dataIndex: 'viewCount',
-      key: 'viewCount',
-      width: 100
+      title: '锻炼部位',
+      dataIndex: 'bodyParts',
+      key: 'bodyParts',
+      width: 150,
+      ellipsis: true
     },
     {
-      title: '点赞次数',
-      dataIndex: 'likeCount',
-      key: 'likeCount',
-      width: 100
+      title: '观看/点赞',
+      key: 'stats',
+      width: 100,
+      render: (_: unknown, record: Course) => (
+        <span>{record.viewCount}/{record.likeCount}</span>
+      )
     },
     {
       title: '操作',
       key: 'action',
-      width: 150,
-      render: (_: any, record: Course) => (
+      width: 120,
+      render: (_: unknown, record: Course) => (
         <Space size="small">
           <Button 
             type="primary" 
             size="small" 
             icon={<EditOutlined />} 
             onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
+          />
           <Popconfirm
             title="确定要删除吗？"
             onConfirm={() => handleDelete(record.id)}
@@ -234,9 +376,7 @@ const CourseManagement: React.FC = () => {
               danger 
               size="small" 
               icon={<DeleteOutlined />}
-            >
-              删除
-            </Button>
+            />
           </Popconfirm>
         </Space>
       )
@@ -263,6 +403,7 @@ const CourseManagement: React.FC = () => {
             type="primary" 
             icon={<PlusOutlined />}
             onClick={handleAdd}
+            style={{ background: '#52c41a', borderColor: '#52c41a' }}
           >
             添加课程
           </Button>
@@ -278,10 +419,10 @@ const CourseManagement: React.FC = () => {
             pageSize,
             total,
             onChange: (page) => setCurrent(page),
-            onShowSizeChange: (_, size) => setPageSize(size),
+            onShowSizeChange: (current, size) => setPageSize(size),
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`
+            showTotal: (total) => `共 ${total} 条记录`
           }}
         />
       </Card>
@@ -289,23 +430,36 @@ const CourseManagement: React.FC = () => {
       <Modal
         title={currentCourse.id ? '编辑课程' : '添加课程'}
         open={modalVisible}
-        onOk={handleSave}
-        onCancel={() => setModalVisible(false)}
+        onCancel={handleCloseModal}
+        footer={null}
         width={800}
-        maskClosable={false}
       >
         <Form
           form={form}
           layout="vertical"
+          onFinish={handleSave}
         >
-          <Form.Item
-            name="title"
-            label="课程标题"
-            rules={[{ required: true, message: '请输入课程标题' }]}
-          >
-            <Input placeholder="请输入课程标题" />
-          </Form.Item>
-
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="title"
+                label="课程标题"
+                rules={[{ required: true, message: '请输入课程标题' }]}
+              >
+                <Input placeholder="请输入课程标题" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="duration"
+                label="时长(分钟)"
+                rules={[{ required: true, message: '请输入课程时长' }]}
+              >
+                <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入课程时长(分钟)" />
+              </Form.Item>
+            </Col>
+          </Row>
+          
           <Form.Item
             name="description"
             label="课程描述"
@@ -313,83 +467,163 @@ const CourseManagement: React.FC = () => {
           >
             <TextArea rows={4} placeholder="请输入课程描述" />
           </Form.Item>
-
-          <Form.Item
-            name="coverImg"
-            label="封面图片URL"
-          >
-            <Input placeholder="请输入封面图片URL" />
-          </Form.Item>
-
-          <Form.Item
-            name="videoUrl"
-            label="视频URL"
-          >
-            <Input placeholder="请输入视频URL" />
-          </Form.Item>
-
-          <Form.Item
-            name="duration"
-            label="时长(分钟)"
-            rules={[{ required: true, message: '请输入课程时长' }]}
-          >
-            <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入课程时长(分钟)" />
-          </Form.Item>
-
-          <Form.Item
-            name="difficulty"
-            label="难度"
-            rules={[{ required: true, message: '请选择难度' }]}
-          >
-            <Select placeholder="请选择难度">
-              <Option value={1}>初级</Option>
-              <Option value={2}>中级</Option>
-              <Option value={3}>高级</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="fitnessGoal"
-            label="健身目标"
-            rules={[{ required: true, message: '请选择健身目标' }]}
-          >
-            <Select placeholder="请选择健身目标">
-              <Option value={1}>增肌</Option>
-              <Option value={2}>减脂</Option>
-              <Option value={3}>塑形</Option>
-              <Option value={4}>维持</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="bodyParts"
-            label="锻炼部位"
-            rules={[{ required: true, message: '请输入锻炼部位' }]}
-          >
-            <Input placeholder="请输入锻炼部位，多个用逗号分隔" />
-          </Form.Item>
-
-          <Form.Item
-            name="calories"
-            label="消耗卡路里"
-            rules={[{ required: true, message: '请输入消耗卡路里' }]}
-          >
-            <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入消耗卡路里" />
-          </Form.Item>
-
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="coverImg"
+                label="封面图片"
+                rules={[{ required: true, message: '请上传封面图片' }]}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  {coverImgUrl && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Image 
+                        src={coverImgUrl} 
+                        width={200}
+                        style={{ borderRadius: '4px' }}
+                        preview={{ 
+                          mask: '点击预览'
+                        }}
+                      />
+                    </div>
+                  )}
+                  <Upload
+                    name="file"
+                    action="/api/fitness/courses/upload/cover"
+                    headers={{
+                      Authorization: `Bearer ${getToken()}`
+                    }}
+                    showUploadList={false}
+                    onChange={handleCoverUpload}
+                  >
+                    <Button icon={coverUploadLoading ? <LoadingOutlined /> : <UploadOutlined />}>
+                      {coverUploadLoading ? '上传中...' : (coverImgUrl ? '更换封面图片' : '上传封面图片')}
+                    </Button>
+                  </Upload>
+                  <Input 
+                    value={coverImgUrl}
+                    placeholder="图片URL" 
+                    style={{ marginTop: 8, display: 'none' }} 
+                  />
+                </div>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="videoUrl"
+                label="课程视频"
+                rules={[{ required: false, message: '请上传课程视频' }]}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  {videoUrl && (
+                    <div style={{ marginBottom: 16 }}>
+                      <video 
+                        src={videoUrl} 
+                        width={200}
+                        height={112}
+                        style={{ borderRadius: '4px' }}
+                        controls
+                      />
+                    </div>
+                  )}
+                  <Upload
+                    name="file"
+                    action="/api/fitness/courses/upload/video"
+                    headers={{
+                      Authorization: `Bearer ${getToken()}`
+                    }}
+                    showUploadList={false}
+                    onChange={handleVideoUpload}
+                  >
+                    <Button icon={videoUploadLoading ? <LoadingOutlined /> : <VideoCameraOutlined />}>
+                      {videoUploadLoading ? '上传中...' : (videoUrl ? '更换视频' : '上传视频(选填)')}
+                    </Button>
+                  </Upload>
+                  <Input 
+                    value={videoUrl}
+                    placeholder="视频URL" 
+                    style={{ marginTop: 8, display: 'none' }} 
+                  />
+                </div>
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                name="difficulty"
+                label="难度等级"
+                rules={[{ required: true, message: '请选择难度等级' }]}
+              >
+                <Select placeholder="请选择难度等级">
+                  <Option value={1}>初级</Option>
+                  <Option value={2}>中级</Option>
+                  <Option value={3}>高级</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="fitnessGoal"
+                label="健身目标"
+                rules={[{ required: true, message: '请选择健身目标' }]}
+              >
+                <Select placeholder="请选择健身目标">
+                  <Option value={1}>增肌</Option>
+                  <Option value={2}>减脂</Option>
+                  <Option value={3}>塑形</Option>
+                  <Option value={4}>维持</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="calories"
+                label="消耗卡路里"
+                rules={[{ required: true, message: '请输入消耗卡路里' }]}
+              >
+                <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入消耗卡路里" />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="bodyParts"
+                label="锻炼部位"
+                rules={[{ required: true, message: '请输入锻炼部位' }]}
+              >
+                <Input placeholder="如：胸部,手臂,腹部（多个用逗号分隔）" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="equipment"
+                label="所需器材"
+              >
+                <Input placeholder="如：哑铃,瑜伽垫（多个用逗号分隔）" />
+              </Form.Item>
+            </Col>
+          </Row>
+          
           <Form.Item
             name="instructor"
             label="教练名称"
           >
             <Input placeholder="请输入教练名称" />
           </Form.Item>
-
-          <Form.Item
-            name="equipment"
-            label="所需器材"
-          >
-            <Input placeholder="请输入所需器材，多个用逗号分隔" />
-          </Form.Item>
+          
+          <div style={{ marginTop: 24, textAlign: 'right' }}>
+            <Button style={{ marginRight: 8 }} onClick={handleCloseModal}>
+              取消
+            </Button>
+            <Button type="primary" htmlType="submit" style={{ background: '#52c41a', borderColor: '#52c41a' }}>
+              保存
+            </Button>
+          </div>
         </Form>
       </Modal>
     </div>

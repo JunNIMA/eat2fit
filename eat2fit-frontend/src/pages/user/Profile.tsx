@@ -10,8 +10,8 @@ import { getToken } from '@/utils/auth';
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-// 跟踪组件是否已经请求过数据
-let hasRequestedData = false;
+// 移除全局的hasRequestedData标记
+// let hasRequestedData = false;
 
 const Profile = () => {
   const [form] = Form.useForm();
@@ -21,27 +21,22 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // 使用组件级别的标记避免重复请求
-    if (!hasRequestedData && !info && !loading) {
-      hasRequestedData = true;
-      console.log('Profile组件：初始化获取用户资料');
-      
-      if (user?.userId) {
-        console.log('Profile组件：获取用户资料，ID:', user.userId);
-        dispatch(fetchUserInfo(user.userId));
-      } else {
-        console.warn('无法加载用户资料：用户ID未找到');
-        // 如果通过localStorage有userId但auth中没有，尝试从localStorage获取
-        const storedUserId = localStorage.getItem('userId');
-        if (storedUserId) {
-          console.log('Profile组件：从localStorage恢复用户ID:', storedUserId);
-          dispatch(fetchUserInfo(parseInt(storedUserId)));
-        }
-      }
+    // 每次组件挂载时都获取用户资料，不依赖缓存
+    console.log('Profile组件：初始化获取用户资料');
+    
+    if (user?.userId) {
+      console.log('Profile组件：获取用户资料，ID:', user.userId);
+      dispatch(fetchUserInfo(user.userId));
     } else {
-      console.log('Profile组件：用户资料已存在或正在加载，跳过请求');
+      console.warn('无法加载用户资料：用户ID未找到');
+      // 如果通过localStorage有userId但auth中没有，尝试从localStorage获取
+      const storedUserId = localStorage.getItem('userId');
+      if (storedUserId) {
+        console.log('Profile组件：从localStorage恢复用户ID:', storedUserId);
+        dispatch(fetchUserInfo(parseInt(storedUserId)));
+      }
     }
-  }, [dispatch]); // 移除多余的依赖项，避免重复触发
+  }, [dispatch, user?.userId]); // 添加user?.userId作为依赖项，确保用户变化时重新获取数据
 
   useEffect(() => {
     if (info) {

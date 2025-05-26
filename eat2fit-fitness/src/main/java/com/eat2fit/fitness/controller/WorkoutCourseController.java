@@ -2,6 +2,7 @@ package com.eat2fit.fitness.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.eat2fit.common.response.Result;
+import com.eat2fit.common.util.AliyunOSSOperator;
 import com.eat2fit.fitness.dto.CourseQueryDTO;
 import com.eat2fit.fitness.entity.WorkoutCourse;
 import com.eat2fit.fitness.service.UserFavoriteService;
@@ -10,10 +11,12 @@ import com.eat2fit.fitness.vo.CourseVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.eat2fit.common.util.UserContext;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +24,7 @@ import java.util.List;
 /**
  * 训练课程控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/fitness/courses")
 @Tag(name = "训练课程接口", description = "提供训练课程相关接口")
@@ -31,6 +35,9 @@ public class WorkoutCourseController {
     
     @Autowired
     private UserFavoriteService favoriteService;
+    
+    @Autowired
+    private AliyunOSSOperator aliyunOSSOperator;
 
     @GetMapping("/page")
     @Operation(summary = "分页查询课程", description = "根据条件分页查询课程列表")
@@ -154,6 +161,32 @@ public class WorkoutCourseController {
     public Result<Boolean> deleteCourse(@PathVariable Long id) {
         boolean removed = courseService.removeById(id);
         return Result.success(removed);
+    }
+    
+    /**
+     * 上传课程封面图片
+     */
+    @PostMapping("/upload/cover")
+    @Operation(summary = "上传封面图片", description = "上传训练课程封面图片")
+    public Result<String> uploadCoverImage(MultipartFile file) throws Exception {
+        log.info("上传课程封面图片: {}", file.getOriginalFilename());
+        // 上传文件到阿里云OSS
+        String fileUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+        log.info("上传封面图片成功，OSS URL: {}", fileUrl);
+        return Result.success(fileUrl);
+    }
+
+    /**
+     * 上传课程视频
+     */
+    @PostMapping("/upload/video")
+    @Operation(summary = "上传课程视频", description = "上传训练课程视频")
+    public Result<String> uploadVideo(MultipartFile file) throws Exception {
+        log.info("上传课程视频: {}", file.getOriginalFilename());
+        // 上传文件到阿里云OSS
+        String fileUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+        log.info("上传视频成功，OSS URL: {}", fileUrl);
+        return Result.success(fileUrl);
     }
     
     /**

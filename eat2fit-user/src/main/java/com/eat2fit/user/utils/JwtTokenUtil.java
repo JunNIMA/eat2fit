@@ -96,4 +96,46 @@ public class JwtTokenUtil {
             throw new BusinessException("token无效: " + e.getMessage());
         }
     }
+    
+    /**
+     * 获取token中的所有claims
+     * @param token JWT令牌
+     * @return Claims对象
+     */
+    public Claims getAllClaimsFromToken(String token) {
+        //1.校验token是否为空
+        if(!StringUtils.hasText(token)){
+            log.warn("token为空");
+            throw new BusinessException("token不能为空");
+        }
+        
+        //2.如果有Bearer前缀，去掉
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        
+        //3.校验并解析token
+        try {
+            log.info("开始解析token获取所有claims");
+            Claims claims = Jwts.parser()
+                    .setSigningKey(JWT_KEY)
+                    .parseClaimsJws(token)
+                    .getBody();
+            
+            log.info("token解析成功，获取所有claims");
+            return claims;
+        } catch (ExpiredJwtException e) {
+            log.error("token已过期", e);
+            throw new BusinessException("token已过期");
+        } catch (UnsupportedJwtException e) {
+            log.error("不支持的token格式", e);
+            throw new BusinessException("不支持的token格式");
+        } catch (MalformedJwtException e) {
+            log.error("token格式错误", e);
+            throw new BusinessException("token格式错误");
+        } catch (Exception e) {
+            log.error("token解析失败: {}", e.getMessage(), e);
+            throw new BusinessException("token无效: " + e.getMessage());
+        }
+    }
 } 

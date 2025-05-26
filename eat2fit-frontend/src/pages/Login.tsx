@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { login } from '@/store/slices/authSlice';
+import { resetUserCache, fetchUserInfo } from '@/store/slices/userSlice';
 import { LoginParams } from '@/types';
 import { handleApiError } from '@/utils/errorHandler';
 
@@ -15,7 +16,15 @@ const Login = () => {
 
   const onFinish = async (values: LoginParams) => {
     try {
-      await dispatch(login(values)).unwrap()
+      // 重置用户信息缓存
+      resetUserCache();
+      
+      const userData = await dispatch(login(values)).unwrap();
+      
+      // 登录成功后立即获取用户详细信息
+      if (userData && userData.userId) {
+        await dispatch(fetchUserInfo(userData.userId));
+      }
       
       // 获取重定向路径，如果存在则重定向，不存在则前往首页
       const redirectPath = localStorage.getItem('redirectPath')

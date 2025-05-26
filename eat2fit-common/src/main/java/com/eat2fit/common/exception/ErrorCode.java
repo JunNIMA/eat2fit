@@ -29,6 +29,11 @@ public enum ErrorCode {
     SERVICE_UNAVAILABLE(503, "服务不可用"),
 
     /**
+     * 通用业务错误
+     */
+    OPERATION_FAILED(1000, "操作失败"),
+
+    /**
      * 业务错误-用户相关
      */
     USER_NOT_FOUND(1001, "用户不存在"),

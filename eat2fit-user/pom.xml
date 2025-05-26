@@ -58,6 +58,13 @@
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
 
+        <!-- PageHelper分页插件 -->
+        <dependency>
+            <groupId>com.github.pagehelper</groupId>
+            <artifactId>pagehelper-spring-boot-starter</artifactId>
+            <version>1.4.7</version>
+        </dependency>
+
         <!-- 接口文档 -->
         <dependency>
             <groupId>com.github.xiaoymin</groupId>

@@ -3,7 +3,7 @@ import { LoginParams, LoginVO } from '@/types'
 import { login as loginApi, logout as logoutApi } from '@/api/auth'
 import { setToken, getToken, removeToken } from '@/utils/auth'
 import { getUserInfo } from '@/api/user'
-import { clearUserInfo } from './userSlice'
+import { clearUserInfo, resetUserCache } from './userSlice'
 
 // 登录异步action
 export const login = createAsyncThunk(
@@ -38,12 +38,6 @@ export const getCurrentUser = createAsyncThunk(
     try {
       const { auth } = getState() as { auth: AuthState }
       
-      // 如果已经有用户信息，则直接返回
-      if (auth.user && auth.user.userId) {
-        console.log('已有用户信息，直接返回')
-        return auth.user
-      }
-      
       // 从localStorage中获取存储的用户ID
       const userId = localStorage.getItem('userId')
       
@@ -57,11 +51,15 @@ export const getCurrentUser = createAsyncThunk(
       
       if (response.success) {
         // 构建与LoginVO兼容的用户信息
+        // 从后端响应中获取角色信息，如果不存在则使用现有角色或默认为0
+        const role = response.data.role !== undefined ? response.data.role : (auth.user?.role || 0);
+        
         const userInfo = {
           userId: response.data.id,
           username: response.data.username,
           nickname: response.data.nickname,
           avatar: response.data.avatar,
+          role: role, // 使用从后端获取的角色信息
           token: getToken() || ''
         }
         return userInfo
@@ -118,6 +116,9 @@ export const logoutUser = createAsyncThunk(
       // 清除本地存储的用户ID
       localStorage.removeItem('userId')
       
+      // 重置用户信息缓存
+      resetUserCache()
+      
       // 清除用户信息
       dispatch(clearUserInfo())
       
@@ -169,6 +170,7 @@ const authSlice = createSlice({
         state.user = action.payload
         // 存储用户ID到localStorage，用于后续恢复状态
         localStorage.setItem('userId', action.payload.userId.toString())
+        // 重置用户信息缓存（不能在这里直接调用）
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false

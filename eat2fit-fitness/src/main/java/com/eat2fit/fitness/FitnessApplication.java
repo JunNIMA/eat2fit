@@ -8,9 +8,10 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 /**
  * 健身服务启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.eat2fit.fitness", "com.eat2fit.common"})
 @EnableDiscoveryClient
 @MapperScan("com.eat2fit.fitness.mapper")
+
 public class FitnessApplication {
 
     public static void main(String[] args) {

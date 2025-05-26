@@ -17,20 +17,23 @@ import {
   Drawer,
   Row,
   Col,
-  Divider
+  Divider,
+  Image
 } from 'antd';
 import { 
   PlusOutlined, 
   EditOutlined, 
   DeleteOutlined, 
   FileAddOutlined,
-  UploadOutlined
+  UploadOutlined,
+  LoadingOutlined
 } from '@ant-design/icons';
 import { 
   getPlans, 
   addPlan, 
   updatePlan, 
   deletePlan, 
+  getPlanDetailsById,
   Plan, 
   QueryParams, 
   PlanCreateDTO, 
@@ -39,6 +42,7 @@ import {
 import { createCancelToken } from '@/utils/request';
 import axios, { CancelTokenSource } from 'axios';
 import type { RcFile, UploadProps } from 'antd/es/upload';
+import { getToken } from '@/utils/auth';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -57,6 +61,9 @@ const PlanManagement: React.FC = () => {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [showDetailDrawer, setShowDetailDrawer] = useState<boolean>(false);
   const [currentDetails, setCurrentDetails] = useState<PlanDetail[]>([]);
+  
+  const [coverImgUrl, setCoverImgUrl] = useState<string>('');
+  const [uploadLoading, setUploadLoading] = useState<boolean>(false);
   
   // 用于取消API请求的令牌
   const plansTokenRef = useRef<CancelTokenSource | null>(null);
@@ -137,9 +144,8 @@ const PlanManagement: React.FC = () => {
       
       if (response.success) {
         message.success(editingPlan ? '更新计划成功' : '添加计划成功');
-        setShowForm(false);
-        setEditingPlan(null);
-        setCurrentDetails([]);
+        // 关闭表单并清理状态
+        handleCloseForm();
         loadPlans();
       } else {
         message.error(response.message || '操作失败');
@@ -215,6 +221,12 @@ const PlanManagement: React.FC = () => {
       coverImg: plan.coverImg,
       equipmentNeeded: plan.equipmentNeeded
     });
+    
+    // 设置封面图片URL
+    setCoverImgUrl(plan.coverImg || '');
+    
+    // 加载计划详情
+    loadPlanDetails(plan.id);
     setShowForm(true);
   };
   
@@ -223,7 +235,52 @@ const PlanManagement: React.FC = () => {
     setEditingPlan(null);
     form.resetFields();
     setCurrentDetails([]);
+    setCoverImgUrl(''); // 清空封面图片URL
     setShowForm(true);
+  };
+  
+  // 关闭表单
+  const handleCloseForm = () => {
+    setShowForm(false);
+    form.resetFields();
+    setCurrentDetails([]);
+    setCoverImgUrl('');
+  };
+  
+  // 处理封面图片上传
+  const handleCoverUpload = (info: any) => {
+    if (info.file.status === 'uploading') {
+      setUploadLoading(true);
+      return;
+    }
+    
+    if (info.file.status === 'done') {
+      setUploadLoading(false);
+      // 获取上传后的URL
+      const imgUrl = info.file.response.data;
+      // 设置表单值
+      form.setFieldsValue({ coverImg: imgUrl });
+      // 更新图片URL状态，用于展示
+      setCoverImgUrl(imgUrl);
+      message.success('封面图片上传成功');
+    } else if (info.file.status === 'error') {
+      setUploadLoading(false);
+      message.error('封面图片上传失败');
+    }
+  };
+  
+  // 加载计划详情
+  const loadPlanDetails = async (planId: number) => {
+    try {
+      const response = await getPlanDetailsById(planId);
+      if (response.success) {
+        setCurrentDetails(response.data);
+      } else {
+        message.error(response.message || '获取训练安排失败');
+      }
+    } catch (error) {
+      message.error('获取训练安排失败');
+    }
   };
   
   // 表格列定义
@@ -384,7 +441,7 @@ const PlanManagement: React.FC = () => {
       <Modal
         title={editingPlan ? '编辑训练计划' : '添加训练计划'}
         open={showForm}
-        onCancel={() => setShowForm(false)}
+        onCancel={handleCloseForm}
         footer={null}
         width={800}
       >
@@ -407,8 +464,40 @@ const PlanManagement: React.FC = () => {
               <Form.Item
                 name="coverImg"
                 label="封面图片"
+                rules={[{ required: true, message: '请上传封面图片' }]}
               >
-                <Input placeholder="输入图片URL" />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  {coverImgUrl && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Image 
+                        src={coverImgUrl} 
+                        width={200}
+                        style={{ borderRadius: '4px' }}
+                        preview={{ 
+                          mask: '点击预览'
+                        }}
+                      />
+                    </div>
+                  )}
+                  <Upload
+                    name="file"
+                    action="/api/fitness/plans/upload/cover"
+                    headers={{
+                      Authorization: `Bearer ${getToken()}`
+                    }}
+                    showUploadList={false}
+                    onChange={handleCoverUpload}
+                  >
+                    <Button icon={uploadLoading ? <LoadingOutlined /> : <UploadOutlined />}>
+                      {uploadLoading ? '上传中...' : (coverImgUrl ? '更换封面图片' : '上传封面图片')}
+                    </Button>
+                  </Upload>
+                  <Input 
+                    value={coverImgUrl}
+                    placeholder="图片URL" 
+                    style={{ marginTop: 8, display: 'none' }} 
+                  />
+                </div>
               </Form.Item>
             </Col>
           </Row>
@@ -505,7 +594,7 @@ const PlanManagement: React.FC = () => {
           </Button>
           
           <div style={{ marginTop: 24, textAlign: 'right' }}>
-            <Button style={{ marginRight: 8 }} onClick={() => setShowForm(false)}>
+            <Button style={{ marginRight: 8 }} onClick={handleCloseForm}>
               取消
             </Button>
             <Button type="primary" htmlType="submit" style={{ background: '#52c41a', borderColor: '#52c41a' }}>

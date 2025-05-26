@@ -1,6 +1,8 @@
 package com.eat2fit.user.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.eat2fit.common.exception.BusinessException;
 import com.eat2fit.common.exception.ErrorCode;
@@ -10,6 +12,7 @@ import com.eat2fit.user.entity.User;
 import com.eat2fit.user.mapper.UserMapper;
 import com.eat2fit.user.service.UserService;
 import com.eat2fit.user.utils.JwtTokenUtil;
+import com.eat2fit.user.utils.PasswordUtil;
 import com.eat2fit.user.vo.LoginVO;
 import com.eat2fit.user.vo.UserVO;
 import org.springframework.beans.BeanUtils;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -81,6 +85,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Map<String,Object> claims = new HashMap<>();
         claims.put("id", user.getId());
         claims.put("username", user.getUsername());
+        claims.put("role", user.getRole());
         String token = jwtTokenUtil.generateToken(claims);
         
         // 返回登录信息
@@ -89,6 +94,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         loginVO.setUsername(user.getUsername());
         loginVO.setNickname(user.getNickname());
         loginVO.setAvatar(user.getAvatar());
+        loginVO.setRole(user.getRole());
         loginVO.setToken(token);
         
         return loginVO;
@@ -144,6 +150,50 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public boolean checkEmailExists(String email) {
         return count(new LambdaQueryWrapper<User>().eq(User::getEmail, email)) > 0;
+    }
+    
+    @Override
+    public List<User> list() {
+        return list(new LambdaQueryWrapper<User>());
+    }
+    
+    @Override
+    public List<User> list(LambdaQueryWrapper<User> queryWrapper) {
+        return baseMapper.selectList(queryWrapper);
+    }
+    
+    @Override
+    public boolean updateById(User user) {
+        return super.updateById(user);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public String resetPassword(Long userId) {
+        // 查询用户是否存在
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        
+        // 生成随机密码 (8位字母数字组合)
+        String newPassword = PasswordUtil.generateRandomPassword(8);
+        
+        // 密码加密
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        
+        // 更新用户密码
+        User updateUser = new User();
+        updateUser.setId(userId);
+        updateUser.setPassword(encodedPassword);
+        
+        boolean result = updateById(updateUser);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_FAILED);
+        }
+        
+        // 返回明文密码给管理员
+        return newPassword;
     }
     
     /**

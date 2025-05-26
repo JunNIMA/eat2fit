@@ -5,6 +5,7 @@ import { useAppSelector } from '@/store/hooks'
 import MainLayout from '@/layouts/MainLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import PrivateRoute from './PrivateRoute'
+import AdminRoute from './AdminRoute'
 
 // 路由懒加载
 const Login = lazy(() => import('@/pages/Login'))
@@ -19,17 +20,25 @@ const PlanList = lazy(() => import('@/pages/fitness/PlanList'))
 const Favorites = lazy(() => import('@/pages/fitness/Favorites'))
 const CheckIn = lazy(() => import('@/pages/fitness/CheckIn'))
 const PlanManagement = lazy(() => import('@/pages/fitness/PlanManagement'))
+const CourseManagement = lazy(() => import('@/pages/fitness/CourseManagement'))
 const Recipes = lazy(() => import('@/pages/diet/Recipes'))
 const RecipeDetail = lazy(() => import('@/pages/diet/RecipeDetail'))
 const RecipeFavorites = lazy(() => import('@/pages/diet/RecipeFavorites'))
 const Foods = lazy(() => import('@/pages/diet/Foods'))
+const FoodManagement = lazy(() => import('@/pages/diet/FoodManagement'))
+const RecipeManagement = lazy(() => import('@/pages/diet/RecipeManagement'))
 const Profile = lazy(() => import('@/pages/user/Profile'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
+const Forbidden = lazy(() => import('@/pages/Forbidden'))
 
 // AI功能页面
 const AiIndex = lazy(() => import('@/pages/ai'))
 const CoachChat = lazy(() => import('@/pages/ai/CoachChat'))
 const HealthQuiz = lazy(() => import('@/pages/ai/HealthQuiz'))
+
+// 管理员页面
+const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'))
+const UserManagement = lazy(() => import('@/pages/admin/UserManagement'))
 
 // 路由加载时的加载组件
 const Loader = (
@@ -135,6 +144,14 @@ const AppRouter = () => {
           )
         },
         { 
+          path: 'fitness/manage/courses', 
+          element: (
+            <Suspense fallback={Loader}>
+              <CourseManagement />
+            </Suspense>
+          )
+        },
+        { 
           path: 'diet', 
           children: [
             { 
@@ -176,6 +193,22 @@ const AppRouter = () => {
                   <Foods />
                 </Suspense>
               )
+            },
+            { 
+              path: 'manage/foods', 
+              element: (
+                <Suspense fallback={Loader}>
+                  <FoodManagement />
+                </Suspense>
+              )
+            },
+            { 
+              path: 'manage/recipes', 
+              element: (
+                <Suspense fallback={Loader}>
+                  <RecipeManagement />
+                </Suspense>
+              )
             }
           ]
         },
@@ -214,6 +247,38 @@ const AppRouter = () => {
           element: (
             <Suspense fallback={Loader}>
               <Profile />
+            </Suspense>
+          )
+        },
+        // 403未授权页面
+        {
+          path: 'forbidden',
+          element: (
+            <Suspense fallback={Loader}>
+              <Forbidden />
+            </Suspense>
+          )
+        },
+      ]
+    },
+    // 管理员路由
+    {
+      path: '/admin',
+      element: <AdminRoute element={<MainLayout />} />,
+      children: [
+        { 
+          path: '', 
+          element: (
+            <Suspense fallback={Loader}>
+              <AdminDashboard />
+            </Suspense>
+          )
+        },
+        { 
+          path: 'users', 
+          element: (
+            <Suspense fallback={Loader}>
+              <UserManagement />
             </Suspense>
           )
         },

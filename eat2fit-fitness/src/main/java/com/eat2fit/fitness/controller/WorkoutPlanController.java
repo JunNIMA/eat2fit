@@ -2,6 +2,7 @@ package com.eat2fit.fitness.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.eat2fit.common.response.Result;
+import com.eat2fit.common.util.AliyunOSSOperator;
 import com.eat2fit.common.util.UserContext;
 import com.eat2fit.fitness.dto.PlanCreateDTO;
 import com.eat2fit.fitness.dto.PlanQueryDTO;
@@ -19,13 +20,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 训练计划控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/fitness/plans")
 @Tag(name = "训练计划接口", description = "提供训练计划相关接口")
@@ -39,6 +43,9 @@ public class WorkoutPlanController {
     
     @Autowired
     private WorkoutCourseService courseService;
+    
+    @Autowired
+    private AliyunOSSOperator aliyunOSSOperator;
 
     @GetMapping("/page")
     @Operation(summary = "分页查询计划", description = "根据条件分页查询训练计划列表")
@@ -242,5 +249,18 @@ public class WorkoutPlanController {
                     vo.setFitnessGoalText("未知");
             }
         }
+    }
+
+    /**
+     * 上传计划封面图片
+     */
+    @PostMapping("/upload/cover")
+    @Operation(summary = "上传封面图片", description = "上传训练计划封面图片")
+    public Result<String> uploadCoverImage(MultipartFile file) throws Exception {
+        log.info("上传计划封面图片: {}", file.getOriginalFilename());
+        // 上传文件到阿里云OSS
+        String fileUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+        log.info("上传封面图片成功，OSS URL: {}", fileUrl);
+        return Result.success(fileUrl);
     }
 } 
