@@ -101,18 +101,21 @@ const MainLayout: React.FC = () => {
       icon: <HeartOutlined />,
       onClick: () => navigate('/fitness/favorites')
     },
-    {
-      key: '/fitness/manage/plans',
-      label: '计划管理',
-      icon: <SettingOutlined />,
-      onClick: () => navigate('/fitness/manage/plans')
-    },
-    {
-      key: '/fitness/manage/courses',
-      label: '课程管理',
-      icon: <SettingOutlined />,
-      onClick: () => navigate('/fitness/manage/courses')
-    }
+    // 仅管理员可见的菜单项
+    ...(user?.role === 1 ? [
+      {
+        key: '/fitness/manage/plans',
+        label: '计划管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/fitness/manage/plans')
+      },
+      {
+        key: '/fitness/manage/courses',
+        label: '课程管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/fitness/manage/courses')
+      }
+    ] : [])
   ];
   
   const dietItems = [
@@ -134,18 +137,21 @@ const MainLayout: React.FC = () => {
       icon: <HeartOutlined />,
       onClick: () => navigate('/diet/favorites')
     },
-    {
-      key: '/diet/manage/foods',
-      label: '食物管理',
-      icon: <SettingOutlined />,
-      onClick: () => navigate('/diet/manage/foods')
-    },
-    {
-      key: '/diet/manage/recipes',
-      label: '食谱管理',
-      icon: <SettingOutlined />,
-      onClick: () => navigate('/diet/manage/recipes')
-    }
+    // 仅管理员可见的菜单项
+    ...(user?.role === 1 ? [
+      {
+        key: '/diet/manage/foods',
+        label: '食物管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/diet/manage/foods')
+      },
+      {
+        key: '/diet/manage/recipes',
+        label: '食谱管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/diet/manage/recipes')
+      }
+    ] : [])
   ];
   
   // AI功能菜单项
@@ -534,24 +540,27 @@ const MainLayout: React.FC = () => {
                 setDrawerVisible(false);
               }
             },
-            {
-              key: '/fitness/manage/plans',
-              icon: <SettingOutlined />,
-              label: '计划管理',
-              onClick: () => {
-                navigate('/fitness/manage/plans');
-                setDrawerVisible(false);
+            // 仅管理员可见的菜单项 - 健身管理
+            ...(user?.role === 1 ? [
+              {
+                key: '/fitness/manage/plans',
+                icon: <SettingOutlined />,
+                label: '计划管理',
+                onClick: () => {
+                  navigate('/fitness/manage/plans');
+                  setDrawerVisible(false);
+                }
+              },
+              {
+                key: '/fitness/manage/courses',
+                icon: <SettingOutlined />,
+                label: '课程管理',
+                onClick: () => {
+                  navigate('/fitness/manage/courses');
+                  setDrawerVisible(false);
+                }
               }
-            },
-            {
-              key: '/fitness/manage/courses',
-              icon: <SettingOutlined />,
-              label: '课程管理',
-              onClick: () => {
-                navigate('/fitness/manage/courses');
-                setDrawerVisible(false);
-              }
-            },
+            ] : []),
             {
               key: '/diet/foods',
               icon: <UnorderedListOutlined />,
@@ -579,24 +588,27 @@ const MainLayout: React.FC = () => {
                 setDrawerVisible(false);
               }
             },
-            {
-              key: '/diet/manage/foods',
-              icon: <SettingOutlined />,
-              label: '食物管理',
-              onClick: () => {
-                navigate('/diet/manage/foods');
-                setDrawerVisible(false);
+            // 仅管理员可见的菜单项 - 饮食管理
+            ...(user?.role === 1 ? [
+              {
+                key: '/diet/manage/foods',
+                icon: <SettingOutlined />,
+                label: '食物管理',
+                onClick: () => {
+                  navigate('/diet/manage/foods');
+                  setDrawerVisible(false);
+                }
+              },
+              {
+                key: '/diet/manage/recipes',
+                icon: <SettingOutlined />,
+                label: '食谱管理',
+                onClick: () => {
+                  navigate('/diet/manage/recipes');
+                  setDrawerVisible(false);
+                }
               }
-            },
-            {
-              key: '/diet/manage/recipes',
-              icon: <SettingOutlined />,
-              label: '食谱管理',
-              onClick: () => {
-                navigate('/diet/manage/recipes');
-                setDrawerVisible(false);
-              }
-            },
+            ] : []),
             {
               key: '/ai',
               icon: <RobotOutlined />,

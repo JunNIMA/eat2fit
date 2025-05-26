@@ -1,6 +1,7 @@
 package com.eat2fit.fitness.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eat2fit.common.response.Result;
 import com.eat2fit.common.util.AliyunOSSOperator;
 import com.eat2fit.common.util.UserContext;
@@ -24,6 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.time.LocalDate;
+import java.util.HashMap;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -171,6 +175,25 @@ public class WorkoutPlanController {
         }
         
         return Result.success(voList);
+    }
+
+    @GetMapping("/stats")
+    @Operation(summary = "计划统计", description = "获取健身计划统计数据")
+    public Result<Map<String, Object>> getPlanStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 查询计划总数
+        long totalCount = planService.count();
+        stats.put("totalCount", totalCount);
+        
+        // 查询今日新增计划数
+        LocalDate today = LocalDate.now();
+        LambdaQueryWrapper<WorkoutPlan> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ge(WorkoutPlan::getCreateTime, today.atStartOfDay());
+        long todayNewCount = planService.count(queryWrapper);
+        stats.put("todayNewCount", todayNewCount);
+        
+        return Result.success(stats);
     }
 
     /**

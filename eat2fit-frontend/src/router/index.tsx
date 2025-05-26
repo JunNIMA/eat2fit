@@ -138,17 +138,21 @@ const AppRouter = () => {
         { 
           path: 'fitness/manage/plans', 
           element: (
-            <Suspense fallback={Loader}>
-              <PlanManagement />
-            </Suspense>
+            <AdminRoute element={
+              <Suspense fallback={Loader}>
+                <PlanManagement />
+              </Suspense>
+            } />
           )
         },
         { 
           path: 'fitness/manage/courses', 
           element: (
-            <Suspense fallback={Loader}>
-              <CourseManagement />
-            </Suspense>
+            <AdminRoute element={
+              <Suspense fallback={Loader}>
+                <CourseManagement />
+              </Suspense>
+            } />
           )
         },
         { 
@@ -197,17 +201,21 @@ const AppRouter = () => {
             { 
               path: 'manage/foods', 
               element: (
-                <Suspense fallback={Loader}>
-                  <FoodManagement />
-                </Suspense>
+                <AdminRoute element={
+                  <Suspense fallback={Loader}>
+                    <FoodManagement />
+                  </Suspense>
+                } />
               )
             },
             { 
               path: 'manage/recipes', 
               element: (
-                <Suspense fallback={Loader}>
-                  <RecipeManagement />
-                </Suspense>
+                <AdminRoute element={
+                  <Suspense fallback={Loader}>
+                    <RecipeManagement />
+                  </Suspense>
+                } />
               )
             }
           ]

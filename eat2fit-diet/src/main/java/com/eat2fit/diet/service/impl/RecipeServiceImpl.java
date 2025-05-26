@@ -8,6 +8,7 @@ import com.eat2fit.diet.entity.RecipeIngredient;
 import com.eat2fit.diet.mapper.RecipeIngredientMapper;
 import com.eat2fit.diet.mapper.RecipeMapper;
 import com.eat2fit.diet.service.RecipeService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -18,6 +19,7 @@ import java.util.List;
  * 食谱服务实现类
  */
 @Service
+@Slf4j
 public class RecipeServiceImpl extends ServiceImpl<RecipeMapper, Recipe> implements RecipeService {
 
     @Autowired
@@ -72,6 +74,29 @@ public class RecipeServiceImpl extends ServiceImpl<RecipeMapper, Recipe> impleme
         LambdaQueryWrapper<RecipeIngredient> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(RecipeIngredient::getRecipeId, recipeId);
         return ingredientMapper.selectList(queryWrapper);
+    }
+    
+    @Override
+    public boolean deleteRecipeIngredients(Long recipeId) {
+        LambdaQueryWrapper<RecipeIngredient> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(RecipeIngredient::getRecipeId, recipeId);
+        return ingredientMapper.delete(queryWrapper) >= 0;
+    }
+    
+    @Override
+    public boolean saveRecipeIngredients(Long recipeId, List<RecipeIngredient> ingredients) {
+        if (ingredients == null || ingredients.isEmpty()) {
+            return true;
+        }
+        
+        try {
+            // 使用批量保存方法
+            int count = ingredientMapper.batchSave(recipeId, ingredients);
+            return count > 0;
+        } catch (Exception e) {
+            log.error("保存食谱食材失败: " + e.getMessage(), e);
+            return false;
+        }
     }
 
     @Override

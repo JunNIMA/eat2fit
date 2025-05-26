@@ -60,46 +60,63 @@ const FitnessPlanDetail: React.FC = () => {
       try {
         // 获取计划基本信息
         const response = await getPlanDetail(Number(id));
-        if (response.success) {
-          console.log('计划基本信息:', response.data);
-          planData = response.data.plan;
-          setPlan(planData);
+        console.log('API 响应数据:', response);
+        
+        if (response.success || response.code === 200) {
+          let data = response.data;
+          console.log('计划基本信息:', data);
+          
+          // 支持两种可能的数据结构
+          planData = data.plan || data;
+          
+          // 确保coverImg属性存在并且是有效的URL
+          if (planData) {
+            console.log('原始计划封面图片URL:', planData.coverImg);
+            
+            // 处理封面图片URL
+            if (planData.coverImg) {
+              // 如果封面URL是相对路径，需要添加正确的前缀
+              if (!planData.coverImg.startsWith('http') && !planData.coverImg.startsWith('/')) {
+                planData.coverImg = '/' + planData.coverImg;
+              }
+              
+              // 如果不包含域名但以/api开头，去掉/api前缀（因为baseURL已经包含了/api）
+              if (planData.coverImg.startsWith('/api/') && !planData.coverImg.includes('://')) {
+                planData.coverImg = planData.coverImg.substring(4);
+              }
+              
+              // 添加随机参数以避免缓存问题
+              const timestamp = new Date().getTime();
+              const randomStr = Math.random().toString(36).substring(2, 8);
+              const separator = planData.coverImg.includes('?') ? '&' : '?';
+              planData.coverImg = `${planData.coverImg}${separator}v=${timestamp}-${randomStr}`;
+              
+              console.log('处理后的封面URL:', planData.coverImg);
+            }
+            
+            setPlan(planData);
+          }
+          
+          // 如果响应中包含details，直接使用
+          if (data.details && Array.isArray(data.details)) {
+            setDetails(data.details);
+          } else {
+            // 否则单独请求训练安排
+            try {
+              const detailsResponse = await getPlanDetailsById(Number(id));
+              if (detailsResponse.success && Array.isArray(detailsResponse.data)) {
+                setDetails(detailsResponse.data);
+              }
+            } catch (error) {
+              console.error('获取训练安排失败:', error);
+            }
+          }
           
           // 检查是否已收藏
           checkFavoriteStatus(Number(id));
         } else {
           console.error('获取计划基本信息失败:', response.message);
-        }
-        
-        // 获取计划训练安排 - 即使基本信息获取失败也尝试获取详情
-        const detailsResponse = await getPlanDetailsById(Number(id));
-        if (detailsResponse.success && Array.isArray(detailsResponse.data)) {
-          console.log('计划详情API响应:', detailsResponse.data);
-          setDetails(detailsResponse.data);
-          
-          // 如果没有获取到计划基本信息但有详情数据，可以从详情中提取一些基本信息
-          if (!planData && detailsResponse.data.length > 0) {
-            const firstDetail = detailsResponse.data[0];
-            const dummyPlan: Plan = {
-              id: firstDetail.planId,
-              name: '训练计划',
-              description: '计划详情',
-              fitnessGoal: 1,
-              fitnessGoalText: '健身',
-              difficulty: 1,
-              difficultyText: '普通',
-              bodyFocus: '',
-              durationWeeks: Math.max(...detailsResponse.data.map(d => d.weekNum || 0)),
-              sessionsPerWeek: 7,
-              coverImg: '',
-              equipmentNeeded: '',
-              totalDays: detailsResponse.data.length
-            };
-            setPlan(dummyPlan);
-          }
-        } else {
-          console.error('获取训练安排失败，响应:', detailsResponse);
-          message.error(detailsResponse.message || '获取训练安排失败');
+          message.error(response.message || '获取计划信息失败');
         }
       } catch (error) {
         console.error('获取计划详情出错:', error);
@@ -142,8 +159,12 @@ const FitnessPlanDetail: React.FC = () => {
           message.success('收藏成功');
         }
       }
-    } catch (error) {
-      handleApiError(error);
+    } catch (error: any) {
+      if (error?.response?.data) {
+        handleApiError(error.response.data);
+      } else {
+        message.error(error?.message || '操作失败，请稍后重试');
+      }
     }
   };
   
@@ -258,6 +279,7 @@ const FitnessPlanDetail: React.FC = () => {
           <Row gutter={[24, 16]}>
             <Col xs={24} md={16}>
               <div 
+                id="plan-cover-container"
                 style={{ 
                   height: isMobile ? 200 : 300,
                   background: '#f0f2f5', 
@@ -268,16 +290,63 @@ const FitnessPlanDetail: React.FC = () => {
                   padding: '16px',
                   backgroundImage: plan.coverImg ? `url(${plan.coverImg})` : undefined,
                   backgroundSize: 'cover',
-                  backgroundPosition: 'center'
+                  backgroundPosition: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               >
+                {/* 强制隐藏占位符，确保封面显示 */}
+                <div 
+                  id="plan-cover-placeholder"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    display: plan.coverImg ? 'none' : 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    fontSize: '24px',
+                    color: '#999',
+                    backgroundColor: '#f9f9f9'
+                  }}
+                >
+                  训练计划封面
+                </div>
+                
+                {/* 隐藏测试图片，用于确认图片URL是否有效 */}
+                <img 
+                  src={plan.coverImg} 
+                  alt="计划封面" 
+                  style={{ display: 'none' }}
+                  onLoad={() => {
+                    console.log('封面图片加载成功:', plan.coverImg);
+                    // 图片加载成功时，确保占位符隐藏
+                    const placeholderEl = document.getElementById('plan-cover-placeholder');
+                    if (placeholderEl) placeholderEl.style.display = 'none';
+                  }}
+                  onError={() => {
+                    console.error('封面图片加载失败:', plan.coverImg);
+                    // 图片加载失败时，显示占位符
+                    const placeholderEl = document.getElementById('plan-cover-placeholder');
+                    if (placeholderEl) placeholderEl.style.display = 'flex';
+                    // 清除背景图
+                    const containerEl = document.getElementById('plan-cover-container') as HTMLElement;
+                    if (containerEl) containerEl.style.backgroundImage = 'none';
+                  }}
+                />
+                
                 <div 
                   style={{ 
                     background: 'rgba(0,0,0,0.6)', 
                     color: 'white', 
                     padding: '8px 16px', 
                     borderRadius: 4,
-                    width: '100%'
+                    width: '100%',
+                    position: 'relative',
+                    zIndex: 2
                   }}
                 >
                   <h2 style={{ color: 'white', margin: 0 }}>{plan.name}</h2>
@@ -335,6 +404,65 @@ const FitnessPlanDetail: React.FC = () => {
                   </Button>
                 ]}
               >
+                {plan.coverImg && (
+                  <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                    <div 
+                      style={{ 
+                        position: 'relative',
+                        height: '150px',
+                        background: `url(${plan.coverImg}) center/cover no-repeat`,
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div 
+                        id="card-image-placeholder"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          display: 'none',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          fontSize: '14px',
+                          color: '#999',
+                          backgroundColor: '#f9f9f9'
+                        }}
+                      >
+                        图片加载失败
+                      </div>
+                      
+                      <img 
+                        src={plan.coverImg} 
+                        alt={plan.name} 
+                        style={{ 
+                          position: 'absolute',
+                          opacity: 0,
+                          width: '1px',
+                          height: '1px'
+                        }} 
+                        onLoad={() => console.log('卡片封面图片加载成功:', plan.coverImg)}
+                        onError={() => {
+                          console.error('卡片中封面图片加载失败:', plan.coverImg);
+                          // 图片加载失败时显示占位符
+                          const parent = document.getElementById('card-image-placeholder');
+                          if (parent) {
+                            parent.style.display = 'flex';
+                          }
+                          // 清除背景图
+                          const imgContainer = parent?.parentElement;
+                          if (imgContainer) {
+                            imgContainer.style.backgroundImage = 'none';
+                            imgContainer.style.backgroundColor = '#f9f9f9';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <p><DashboardOutlined /> 难度: {plan.difficultyText}</p>
                 <p><ClockCircleOutlined /> 持续时间: {plan.durationWeeks} 周</p>
                 <p><CalendarOutlined /> 训练频率: 每周 {plan.sessionsPerWeek} 次</p>

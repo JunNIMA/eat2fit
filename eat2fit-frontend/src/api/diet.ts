@@ -248,3 +248,11 @@ export const getFavoriteRecipes = (current: number = 1, size: number = 10, cance
     cancelToken: cancelToken?.token
   });
 };
+
+// 新增接口：获取饮食方案统计数据
+export const getDietRecipeStats = (): Promise<ApiResponse<{
+  totalCount: number;
+  todayNewCount: number;
+}>> => {
+  return request.get('/diet/recipes/stats');
+};

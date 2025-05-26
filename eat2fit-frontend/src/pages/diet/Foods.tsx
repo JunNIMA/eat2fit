@@ -107,9 +107,14 @@ const Foods: React.FC = () => {
       };
       
       const res = await getFoods(params, foodsTokenRef.current);
-      if (res.code === 200) {
+      if (res.code === 200 || res.success) {
         setFoods(res.data.records || []);
         setTotal(res.data.total || 0);
+        console.log('食物列表分页数据:', {
+          current,
+          total: res.data.total,
+          hasMore: current * 12 < res.data.total
+        });
       } else {
         message.error(res.message || '获取食物列表失败');
       }
@@ -265,7 +270,10 @@ const Foods: React.FC = () => {
               current,
               pageSize: 12,
               total,
-              onChange: (page) => setCurrent(page),
+              onChange: (page) => {
+                console.log('切换到页码:', page);
+                setCurrent(page);
+              },
               style: { textAlign: 'center', marginTop: 16 }
             }}
           />

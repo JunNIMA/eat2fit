@@ -6,7 +6,7 @@ import { handlePlanSelectionError } from './errorHandler'
 
 // 创建axios实例
 const request = axios.create({
-  baseURL: '/api', // 改回'/api'，与前端请求保持一致
+  baseURL: '/api', // 与Vite代理配置保持一致
   timeout: 10000,
 })
 
