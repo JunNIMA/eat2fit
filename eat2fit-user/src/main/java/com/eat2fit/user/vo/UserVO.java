@@ -69,7 +69,11 @@ public class UserVO {
      * 账号状态 1:正常 0:禁用
      */
     private Integer status;
-
+    
+    /**
+     * 用户角色 0:普通用户 1:管理员
+     */
+    private Integer role;
 
     /**
      * 创建时间

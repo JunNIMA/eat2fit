@@ -8,7 +8,15 @@
         (recipe_id, food_id, name, amount, unit, create_time) 
         VALUES 
         <foreach collection="list" item="item" separator=",">
-            (#{recipeId}, #{item.foodId}, #{item.name}, #{item.amount}, #{item.unit}, now())
+            (#{recipeId}, 
+            <choose>
+                <when test="item.foodId != null">#{item.foodId}</when>
+                <otherwise>null</otherwise>
+            </choose>, 
+            #{item.name}, 
+            #{item.amount}, 
+            #{item.unit}, 
+            now())
         </foreach>
     </insert>
 

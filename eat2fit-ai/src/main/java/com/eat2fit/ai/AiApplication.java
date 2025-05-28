@@ -7,7 +7,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 /**
  * AI服务启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.eat2fit.ai"})
 @EnableDiscoveryClient
 public class AiApplication {
     public static void main(String[] args) {

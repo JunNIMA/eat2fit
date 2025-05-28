@@ -8,7 +8,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 /**
  * 饮食服务启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.eat2fit.diet", "com.eat2fit.common"})
 @EnableDiscoveryClient
 @MapperScan("com.eat2fit.diet.mapper")
 public class DietApplication {

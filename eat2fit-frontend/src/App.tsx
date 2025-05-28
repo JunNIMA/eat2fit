@@ -4,9 +4,10 @@ import AppRouter from './router'
 import { useAppDispatch } from './store/hooks'
 import { checkAuth } from './store/slices/authSlice'
 import { Spin } from 'antd'
+import { store } from './store'
 
-// 应用级别标记，防止多次请求
-let hasCheckedAuth = false;
+// 移除应用级别标记
+// let hasCheckedAuth = false;
 
 function App() {
   const dispatch = useAppDispatch()
@@ -15,18 +16,18 @@ function App() {
   useEffect(() => {
     // 检查用户是否已登录，并加载用户信息
     const checkAuthentication = async () => {
-      // 如果已经检查过认证状态，则不再重复检查
-      if (hasCheckedAuth) {
-        console.log('已经检查过认证状态，跳过');
-        setLoading(false);
-        return;
-      }
-      
+      // 总是检查认证状态，确保每次应用启动都获取最新用户信息
       try {
         // 检查认证状态 - 这里会通过getCurrentUser加载用户信息
-        await dispatch(checkAuth()).unwrap()
-        // 标记已经检查过认证
-        hasCheckedAuth = true;
+        const result = await dispatch(checkAuth()).unwrap()
+        console.log('认证检查完成，用户登录状态:', result)
+        
+        // 如果用户已登录，打印用户信息
+        if (result) {
+          // 在异步操作完成后重新获取最新状态
+          const currentAuthState = store.getState().auth
+          console.log('当前用户信息:', currentAuthState.user)
+        }
       } catch (error) {
         console.error('认证检查失败:', error)
       } finally {

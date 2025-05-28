@@ -14,6 +14,7 @@ export interface LoginVO {
   username: string
   nickname: string
   avatar: string
+  role: number  // 用户角色 0:普通用户 1:管理员
   token: string
 }
 
@@ -37,6 +38,7 @@ export interface UserVO {
   weight: number
   fitnessGoal: number
   status: number
+  role?: number // 用户角色 0:普通用户 1:管理员
   createTime: string
 }
 

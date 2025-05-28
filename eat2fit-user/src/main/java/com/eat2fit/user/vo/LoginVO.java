@@ -31,6 +31,11 @@ public class LoginVO {
      * 头像URL
      */
     private String avatar;
+    
+    /**
+     * 用户角色 0:普通用户 1:管理员
+     */
+    private Integer role;
 
     /**
      * JWT令牌

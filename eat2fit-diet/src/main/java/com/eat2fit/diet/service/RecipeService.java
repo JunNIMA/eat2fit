@@ -38,6 +38,21 @@ public interface RecipeService extends IService<Recipe> {
     List<RecipeIngredient> getRecipeIngredients(Long recipeId);
     
     /**
+     * 删除食谱的所有食材
+     * @param recipeId 食谱ID
+     * @return 是否成功
+     */
+    boolean deleteRecipeIngredients(Long recipeId);
+    
+    /**
+     * 保存食谱食材列表
+     * @param recipeId 食谱ID
+     * @param ingredients 食材列表
+     * @return 是否成功
+     */
+    boolean saveRecipeIngredients(Long recipeId, List<RecipeIngredient> ingredients);
+    
+    /**
      * 增加浏览次数
      * @param id 食谱ID
      * @return 是否成功

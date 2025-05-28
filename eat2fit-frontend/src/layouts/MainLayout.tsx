@@ -15,9 +15,10 @@ import {
   BookOutlined,
   RobotOutlined
 } from '@ant-design/icons';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { fetchUserInfo } from '@/store/slices/userSlice';
 
 const { Header, Content, Sider } = Layout;
 
@@ -26,10 +27,19 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector(state => state.auth);
+  const { info } = useAppSelector(state => state.user);
   
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  
+  // 在布局组件挂载时获取最新的用户信息
+  useEffect(() => {
+    if (user?.userId) {
+      console.log('MainLayout: 获取最新用户信息');
+      dispatch(fetchUserInfo(user.userId));
+    }
+  }, [dispatch, user?.userId]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -91,12 +101,21 @@ const MainLayout: React.FC = () => {
       icon: <HeartOutlined />,
       onClick: () => navigate('/fitness/favorites')
     },
-    {
-      key: '/fitness/manage/plans',
-      label: '计划管理',
-      icon: <SettingOutlined />,
-      onClick: () => navigate('/fitness/manage/plans')
-    }
+    // 仅管理员可见的菜单项
+    ...(user?.role === 1 ? [
+      {
+        key: '/fitness/manage/plans',
+        label: '计划管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/fitness/manage/plans')
+      },
+      {
+        key: '/fitness/manage/courses',
+        label: '课程管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/fitness/manage/courses')
+      }
+    ] : [])
   ];
   
   const dietItems = [
@@ -117,7 +136,22 @@ const MainLayout: React.FC = () => {
       label: '我的收藏',
       icon: <HeartOutlined />,
       onClick: () => navigate('/diet/favorites')
-    }
+    },
+    // 仅管理员可见的菜单项
+    ...(user?.role === 1 ? [
+      {
+        key: '/diet/manage/foods',
+        label: '食物管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/diet/manage/foods')
+      },
+      {
+        key: '/diet/manage/recipes',
+        label: '食谱管理',
+        icon: <SettingOutlined />,
+        onClick: () => navigate('/diet/manage/recipes')
+      }
+    ] : [])
   ];
   
   // AI功能菜单项
@@ -136,7 +170,8 @@ const MainLayout: React.FC = () => {
     }
   ];
   
-  const menuItems = [
+  // 普通用户菜单
+  const userMenuItems = [
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
@@ -168,6 +203,26 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/user/profile')
     }
   ];
+  
+  // 管理员菜单
+  const adminMenuItems = [
+    {
+      key: 'admin',
+      icon: <DashboardOutlined />,
+      label: <Link to="/admin">管理员控制台</Link>
+    },
+    {
+      key: 'userManagement',
+      icon: <UserOutlined />,
+      label: <Link to="/admin/users">用户管理</Link>
+    },
+    // 可以添加更多管理菜单项
+  ];
+  
+  // 根据用户角色决定显示的菜单
+  const menuItems = user?.role === 1 
+    ? [...userMenuItems, { type: 'divider' as const }, ...adminMenuItems]
+    : userMenuItems;
   
   // 确定当前选中的菜单项
   const getSelectedKeys = () => {
@@ -393,12 +448,12 @@ const MainLayout: React.FC = () => {
               <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                 <Avatar 
                   size="large" 
-                  src={user?.avatar}
-                  icon={!user?.avatar && <UserOutlined />} 
+                  src={info?.avatar}
+                  icon={!info?.avatar && <UserOutlined />} 
                 />
                 {!isMobile && (
                   <span style={{ marginLeft: 8 }}>
-                    {user?.nickname || user?.username || '用户'}
+                    {info?.nickname || user?.username || '用户'}
                   </span>
                 )}
               </div>
@@ -485,15 +540,27 @@ const MainLayout: React.FC = () => {
                 setDrawerVisible(false);
               }
             },
-            {
-              key: '/fitness/manage/plans',
-              icon: <SettingOutlined />,
-              label: '计划管理',
-              onClick: () => {
-                navigate('/fitness/manage/plans');
-                setDrawerVisible(false);
+            // 仅管理员可见的菜单项 - 健身管理
+            ...(user?.role === 1 ? [
+              {
+                key: '/fitness/manage/plans',
+                icon: <SettingOutlined />,
+                label: '计划管理',
+                onClick: () => {
+                  navigate('/fitness/manage/plans');
+                  setDrawerVisible(false);
+                }
+              },
+              {
+                key: '/fitness/manage/courses',
+                icon: <SettingOutlined />,
+                label: '课程管理',
+                onClick: () => {
+                  navigate('/fitness/manage/courses');
+                  setDrawerVisible(false);
+                }
               }
-            },
+            ] : []),
             {
               key: '/diet/foods',
               icon: <UnorderedListOutlined />,
@@ -521,6 +588,27 @@ const MainLayout: React.FC = () => {
                 setDrawerVisible(false);
               }
             },
+            // 仅管理员可见的菜单项 - 饮食管理
+            ...(user?.role === 1 ? [
+              {
+                key: '/diet/manage/foods',
+                icon: <SettingOutlined />,
+                label: '食物管理',
+                onClick: () => {
+                  navigate('/diet/manage/foods');
+                  setDrawerVisible(false);
+                }
+              },
+              {
+                key: '/diet/manage/recipes',
+                icon: <SettingOutlined />,
+                label: '食谱管理',
+                onClick: () => {
+                  navigate('/diet/manage/recipes');
+                  setDrawerVisible(false);
+                }
+              }
+            ] : []),
             {
               key: '/ai',
               icon: <RobotOutlined />,

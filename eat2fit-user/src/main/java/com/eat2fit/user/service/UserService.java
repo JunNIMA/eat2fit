@@ -1,9 +1,15 @@
 package com.eat2fit.user.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.eat2fit.user.dto.UserLoginDTO;
 import com.eat2fit.user.dto.UserRegisterDTO;
+import com.eat2fit.user.entity.User;
 import com.eat2fit.user.vo.LoginVO;
 import com.eat2fit.user.vo.UserVO;
+
+import java.util.List;
 
 /**
  * 用户服务接口
@@ -66,4 +72,35 @@ public interface UserService {
      * @return 是否存在
      */
     boolean checkEmailExists(String email);
+
+    /**
+     * 获取所有用户列表
+     * 
+     * @return 用户列表
+     */
+    List<User> list();
+
+    /**
+     * 根据条件获取用户列表
+     * 
+     * @param queryWrapper 查询条件
+     * @return 用户列表
+     */
+    List<User> list(LambdaQueryWrapper<User> queryWrapper);
+
+    /**
+     * 根据ID更新用户信息
+     * 
+     * @param user 用户信息
+     * @return 更新结果
+     */
+    boolean updateById(User user);
+    
+    /**
+     * 重置用户密码
+     * 
+     * @param userId 用户ID
+     * @return 新密码
+     */
+    String resetPassword(Long userId);
 } 

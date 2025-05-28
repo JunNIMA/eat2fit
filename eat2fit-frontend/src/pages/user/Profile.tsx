@@ -5,12 +5,13 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { updateUserInfo } from '@/api/user';
 import { fetchUserInfo } from '@/store/slices/userSlice';
 import { handleApiError } from '@/utils/errorHandler';
+import { getToken } from '@/utils/auth';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-// 跟踪组件是否已经请求过数据
-let hasRequestedData = false;
+// 移除全局的hasRequestedData标记
+// let hasRequestedData = false;
 
 const Profile = () => {
   const [form] = Form.useForm();
@@ -20,31 +21,27 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // 使用组件级别的标记避免重复请求
-    if (!hasRequestedData && !info && !loading) {
-      hasRequestedData = true;
-      console.log('Profile组件：初始化获取用户资料');
-      
-      if (user?.userId) {
-        console.log('Profile组件：获取用户资料，ID:', user.userId);
-        dispatch(fetchUserInfo(user.userId));
-      } else {
-        console.warn('无法加载用户资料：用户ID未找到');
-        // 如果通过localStorage有userId但auth中没有，尝试从localStorage获取
-        const storedUserId = localStorage.getItem('userId');
-        if (storedUserId) {
-          console.log('Profile组件：从localStorage恢复用户ID:', storedUserId);
-          dispatch(fetchUserInfo(parseInt(storedUserId)));
-        }
-      }
+    // 每次组件挂载时都获取用户资料，不依赖缓存
+    console.log('Profile组件：初始化获取用户资料');
+    
+    if (user?.userId) {
+      console.log('Profile组件：获取用户资料，ID:', user.userId);
+      dispatch(fetchUserInfo(user.userId));
     } else {
-      console.log('Profile组件：用户资料已存在或正在加载，跳过请求');
+      console.warn('无法加载用户资料：用户ID未找到');
+      // 如果通过localStorage有userId但auth中没有，尝试从localStorage获取
+      const storedUserId = localStorage.getItem('userId');
+      if (storedUserId) {
+        console.log('Profile组件：从localStorage恢复用户ID:', storedUserId);
+        dispatch(fetchUserInfo(parseInt(storedUserId)));
+      }
     }
-  }, [dispatch]); // 移除多余的依赖项，避免重复触发
+  }, [dispatch, user?.userId]); // 添加user?.userId作为依赖项，确保用户变化时重新获取数据
 
   useEffect(() => {
     if (info) {
       form.setFieldsValue({
+        username: info.username,
         nickname: info.nickname,
         email: info.email,
         phone: info.phone,
@@ -91,11 +88,37 @@ const Profile = () => {
               <div style={{ textAlign: 'center' }}>
                 <Avatar 
                   size={100} 
-                  src={user?.avatar} 
+                  src={info?.avatar} 
                   icon={<UserOutlined />} 
                   style={{ marginBottom: 16 }}
                 />
-                <Upload showUploadList={false}>
+                <Upload 
+                  showUploadList={false}
+                  action="/api/user/profile"
+                  name="file"
+                  headers={{
+                    Authorization: `Bearer ${getToken()}`
+                  }}
+                  onChange={(info) => {
+                    if (info.file.status === 'done') {
+                      const avatarUrl = info.file.response.data;
+                      // 更新用户头像
+                      if (user?.userId) {
+                        updateUserInfo(user.userId, { avatar: avatarUrl })
+                          .then(() => {
+                            message.success('头像更新成功');
+                            // 重新获取用户信息
+                            dispatch(fetchUserInfo(user.userId));
+                          })
+                          .catch(() => {
+                            message.error('头像更新失败');
+                          });
+                      }
+                    } else if (info.file.status === 'error') {
+                      message.error('头像上传失败');
+                    }
+                  }}
+                >
                   <Button icon={<UploadOutlined />}>更换头像</Button>
                 </Upload>
               </div>

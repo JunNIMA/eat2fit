@@ -356,4 +356,12 @@ export const isWorkoutCompletedToday = (userPlanId: number): Promise<ApiResponse
       userPlanId
     }
   });
+};
+
+// 新增接口：获取健身计划统计数据
+export const getFitnessPlanStats = (): Promise<ApiResponse<{
+  totalCount: number;
+  todayNewCount: number;
+}>> => {
+  return request.get('/fitness/plans/stats');
 }; 

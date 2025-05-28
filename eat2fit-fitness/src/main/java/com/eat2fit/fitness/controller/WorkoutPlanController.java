@@ -1,7 +1,9 @@
 package com.eat2fit.fitness.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eat2fit.common.response.Result;
+import com.eat2fit.common.util.AliyunOSSOperator;
 import com.eat2fit.common.util.UserContext;
 import com.eat2fit.fitness.dto.PlanCreateDTO;
 import com.eat2fit.fitness.dto.PlanQueryDTO;
@@ -19,13 +21,19 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.time.LocalDate;
+import java.util.HashMap;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 训练计划控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/fitness/plans")
 @Tag(name = "训练计划接口", description = "提供训练计划相关接口")
@@ -39,6 +47,9 @@ public class WorkoutPlanController {
     
     @Autowired
     private WorkoutCourseService courseService;
+    
+    @Autowired
+    private AliyunOSSOperator aliyunOSSOperator;
 
     @GetMapping("/page")
     @Operation(summary = "分页查询计划", description = "根据条件分页查询训练计划列表")
@@ -166,6 +177,25 @@ public class WorkoutPlanController {
         return Result.success(voList);
     }
 
+    @GetMapping("/stats")
+    @Operation(summary = "计划统计", description = "获取健身计划统计数据")
+    public Result<Map<String, Object>> getPlanStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 查询计划总数
+        long totalCount = planService.count();
+        stats.put("totalCount", totalCount);
+        
+        // 查询今日新增计划数
+        LocalDate today = LocalDate.now();
+        LambdaQueryWrapper<WorkoutPlan> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ge(WorkoutPlan::getCreateTime, today.atStartOfDay());
+        long todayNewCount = planService.count(queryWrapper);
+        stats.put("todayNewCount", todayNewCount);
+        
+        return Result.success(stats);
+    }
+
     /**
      * 以下是管理接口，需要管理员权限
      */
@@ -242,5 +272,18 @@ public class WorkoutPlanController {
                     vo.setFitnessGoalText("未知");
             }
         }
+    }
+
+    /**
+     * 上传计划封面图片
+     */
+    @PostMapping("/upload/cover")
+    @Operation(summary = "上传封面图片", description = "上传训练计划封面图片")
+    public Result<String> uploadCoverImage(MultipartFile file) throws Exception {
+        log.info("上传计划封面图片: {}", file.getOriginalFilename());
+        // 上传文件到阿里云OSS
+        String fileUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+        log.info("上传封面图片成功，OSS URL: {}", fileUrl);
+        return Result.success(fileUrl);
     }
 } 

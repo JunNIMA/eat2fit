@@ -4,10 +4,16 @@ import { getUserInfo } from '@/api/user'
 
 // 跟踪最近一次请求
 let lastFetchTime = 0;
-const CACHE_TIME = 30000; // 30秒缓存时间
+const CACHE_TIME = 0; // 修改为0，禁用缓存，确保每次都重新获取数据
 
 // 正在请求中的用户ID
 let pendingRequests: Record<number, boolean> = {};
+
+// 重置用户信息缓存状态
+export const resetUserCache = () => {
+  lastFetchTime = 0;
+  pendingRequests = {};
+}
 
 // 获取用户信息异步action
 export const fetchUserInfo = createAsyncThunk(
