@@ -106,17 +106,29 @@ const Foods: React.FC = () => {
         keyword: keyword || undefined
       };
       
+      console.log('请求食物列表参数:', params);
+      
       const res = await getFoods(params, foodsTokenRef.current);
       if (res.code === 200 || res.success) {
-        setFoods(res.data.records || []);
-        setTotal(res.data.total || 0);
-        console.log('食物列表分页数据:', {
-          current,
-          total: res.data.total,
-          hasMore: current * 12 < res.data.total
-        });
+        if (Array.isArray(res.data.records)) {
+          setFoods(res.data.records);
+          setTotal(res.data.total || 0);
+          console.log('食物列表分页数据:', {
+            current,
+            total: res.data.total,
+            recordsCount: res.data.records.length,
+            hasMore: current * 12 < res.data.total
+          });
+        } else {
+          console.error('食物列表数据格式错误:', res.data);
+          message.error('获取食物列表失败，数据格式错误');
+          setFoods([]);
+          setTotal(0);
+        }
       } else {
         message.error(res.message || '获取食物列表失败');
+        setFoods([]);
+        setTotal(0);
       }
     } catch (error) {
       if (axios.isCancel(error)) {
@@ -124,6 +136,8 @@ const Foods: React.FC = () => {
       } else {
         console.error('获取食物列表出错', error);
         message.error('获取食物列表失败，请稍后重试');
+        setFoods([]);
+        setTotal(0);
       }
     } finally {
       setLoading(false);
@@ -171,60 +185,116 @@ const Foods: React.FC = () => {
     }
   };
   
+  // 处理图片URL，确保完整路径
+  const getImageUrl = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    
+    // 如果已经是完整URL（以http或https开头），则直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // 如果是相对路径，添加基础URL
+    if (url.startsWith('/')) {
+      return `${process.env.REACT_APP_API_BASE_URL || '/api'}${url}`;
+    }
+    
+    // 其他情况，假设是相对于API的路径
+    return `${process.env.REACT_APP_API_BASE_URL || '/api'}/${url}`;
+  };
+  
+  // 图片加载错误处理
+  const [imgErrorMap, setImgErrorMap] = useState<Record<number, boolean>>({});
+  
+  const handleImageError = (foodId: number) => {
+    setImgErrorMap(prev => ({
+      ...prev,
+      [foodId]: true
+    }));
+  };
+  
   // 食物项展示
-  const renderFoodItem = (food: Food) => (
-    <List.Item>
-      <Card
-        hoverable
-        style={{ width: '100%' }}
-        onClick={() => showFoodDetail(food.id)}
-      >
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Avatar 
-            size={64} 
-            src={food.imageUrl} 
-            icon={!food.imageUrl && <AppleOutlined />} 
-            style={{ backgroundColor: !food.imageUrl ? '#52c41a' : undefined }}
-          />
-          <div style={{ marginLeft: 16, flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>
-              {food.name}
+  const renderFoodItem = (food: Food) => {
+    // 检查图片是否有错误
+    const hasImageError = imgErrorMap[food.id];
+    // 获取图片URL
+    const imageUrl = getImageUrl(food.imageUrl);
+    // 是否显示默认图标
+    const showDefaultIcon = !food.imageUrl || hasImageError;
+    
+    return (
+      <List.Item>
+        <Card
+          hoverable
+          style={{ width: '100%', height: '100%' }}
+          onClick={() => showFoodDetail(food.id)}
+          bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Avatar 
+              size={64} 
+              src={!showDefaultIcon ? imageUrl : undefined}
+              icon={showDefaultIcon && <AppleOutlined />} 
+              style={{ backgroundColor: showDefaultIcon ? '#52c41a' : undefined, flexShrink: 0 }}
+              onError={() => {
+                handleImageError(food.id);
+                return true;
+              }}
+            />
+            <div style={{ marginLeft: 16, flex: 1, overflow: 'hidden' }}>
+              <div style={{ 
+                fontWeight: 'bold', 
+                fontSize: 16, 
+                marginBottom: 8, 
+                whiteSpace: 'nowrap', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                maxWidth: '100%'
+              }}>
+                {food.name}
+              </div>
+              <div>
+                <Tag color="green">{food.category}</Tag>
+              </div>
             </div>
-            <div>
-              <Tag color="green">{food.category}</Tag>
+            <div style={{ textAlign: 'right', minWidth: 70, flexShrink: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 'bold', color: '#fa541c' }}>
+                {food.calories} 千卡
+              </div>
+              <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                每100克
+              </div>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 16, fontWeight: 'bold', color: '#fa541c' }}>
-              {food.calories} 千卡
+          
+          <div style={{ 
+            marginTop: 16, 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}>
+            <div style={{ textAlign: 'center', flex: '1 0 20%', minWidth: '60px' }}>
+              <div style={{ fontSize: 12, color: '#999' }}>蛋白质</div>
+              <div>{food.protein}克</div>
             </div>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-              每100克
+            <div style={{ textAlign: 'center', flex: '1 0 20%', minWidth: '60px' }}>
+              <div style={{ fontSize: 12, color: '#999' }}>脂肪</div>
+              <div>{food.fat}克</div>
+            </div>
+            <div style={{ textAlign: 'center', flex: '1 0 20%', minWidth: '60px' }}>
+              <div style={{ fontSize: 12, color: '#999' }}>碳水</div>
+              <div>{food.carbs}克</div>
+            </div>
+            <div style={{ textAlign: 'center', flex: '1 0 20%', minWidth: '60px' }}>
+              <div style={{ fontSize: 12, color: '#999' }}>纤维素</div>
+              <div>{food.fiber || '-'}克</div>
             </div>
           </div>
-        </div>
-        
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 12, color: '#999' }}>蛋白质</div>
-            <div>{food.protein}克</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#999' }}>脂肪</div>
-            <div>{food.fat}克</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#999' }}>碳水</div>
-            <div>{food.carbs}克</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#999' }}>纤维素</div>
-            <div>{food.fiber || '-'}克</div>
-          </div>
-        </div>
-      </Card>
-    </List.Item>
-  );
+        </Card>
+      </List.Item>
+    );
+  };
   
   return (
     <div className="foods-page">
@@ -263,7 +333,15 @@ const Foods: React.FC = () => {
           </div>
         ) : foods.length > 0 ? (
           <List
-            grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4 }}
+            grid={{ 
+              gutter: 16, 
+              xs: 1, 
+              sm: 1, 
+              md: 2, 
+              lg: 3, 
+              xl: 4,
+              xxl: 4
+            }}
             dataSource={foods}
             renderItem={renderFoodItem}
             pagination={{
@@ -273,8 +351,12 @@ const Foods: React.FC = () => {
               onChange: (page) => {
                 console.log('切换到页码:', page);
                 setCurrent(page);
+                // 滚动到页面顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               },
-              style: { textAlign: 'center', marginTop: 16 }
+              showSizeChanger: false,
+              showTotal: (total) => `共 ${total} 条`,
+              style: { textAlign: 'center', marginTop: 24 }
             }}
           />
         ) : (
@@ -288,23 +370,29 @@ const Foods: React.FC = () => {
         open={detailVisible}
         onCancel={() => setDetailVisible(false)}
         footer={null}
-        width={700}
+        width={isMobile ? '95%' : 700}
+        centered
+        destroyOnClose
       >
         {detailLoading ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <Spin size="large" />
           </div>
         ) : selectedFood ? (
-          <div>
+          <div className="food-detail-content" style={{ maxHeight: 'calc(80vh - 100px)', overflowY: 'auto', paddingRight: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
               <Avatar 
                 size={80} 
-                src={selectedFood.imageUrl} 
-                icon={!selectedFood.imageUrl && <AppleOutlined />} 
-                style={{ backgroundColor: !selectedFood.imageUrl ? '#52c41a' : undefined }}
+                src={selectedFood.imageUrl && !imgErrorMap[selectedFood.id] ? getImageUrl(selectedFood.imageUrl) : undefined} 
+                icon={(!selectedFood.imageUrl || imgErrorMap[selectedFood.id]) && <AppleOutlined />} 
+                style={{ backgroundColor: (!selectedFood.imageUrl || imgErrorMap[selectedFood.id]) ? '#52c41a' : undefined }}
+                onError={() => {
+                  handleImageError(selectedFood.id);
+                  return true;
+                }}
               />
-              <div style={{ marginLeft: 20 }}>
-                <h2 style={{ margin: 0 }}>{selectedFood.name}</h2>
+              <div style={{ marginLeft: 20, flex: 1, overflow: 'hidden' }}>
+                <h2 style={{ margin: 0, wordBreak: 'break-word' }}>{selectedFood.name}</h2>
                 <Tag color="green" style={{ marginTop: 8 }}>{selectedFood.category}</Tag>
               </div>
             </div>

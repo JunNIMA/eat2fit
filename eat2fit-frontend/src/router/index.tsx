@@ -25,6 +25,7 @@ const Recipes = lazy(() => import('@/pages/diet/Recipes'))
 const RecipeDetail = lazy(() => import('@/pages/diet/RecipeDetail'))
 const RecipeFavorites = lazy(() => import('@/pages/diet/RecipeFavorites'))
 const Foods = lazy(() => import('@/pages/diet/Foods'))
+const MealPlans = lazy(() => import('@/pages/diet/MealPlans'))
 const FoodManagement = lazy(() => import('@/pages/diet/FoodManagement'))
 const RecipeManagement = lazy(() => import('@/pages/diet/RecipeManagement'))
 const Profile = lazy(() => import('@/pages/user/Profile'))
@@ -195,6 +196,14 @@ const AppRouter = () => {
               element: (
                 <Suspense fallback={Loader}>
                   <Foods />
+                </Suspense>
+              )
+            },
+            { 
+              path: 'meals', 
+              element: (
+                <Suspense fallback={Loader}>
+                  <MealPlans />
                 </Suspense>
               )
             },

@@ -29,7 +29,8 @@ spring:
           uri: lb://eat2fit-ai
           predicates:
             - Path=/ai/**
-
+  main:
+    web-application-type: reactive
 # 日志配置
 logging:
   level:
