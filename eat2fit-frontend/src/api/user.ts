@@ -48,6 +48,17 @@ export const checkEmailExists = (email: string): Promise<ApiResponse<boolean>> =
 }
 
 /**
+ * 【管理员接口】获取用户统计数据
+ * @returns 用户统计数据响应
+ */
+export const getUserStats = (): Promise<ApiResponse<{
+  totalCount: number;
+  todayNewCount: number;
+}>> => {
+  return request.get('/admin/users/stats')
+}
+
+/**
  * 【管理员接口】获取用户列表
  * @param params 查询参数
  * @returns 用户列表响应

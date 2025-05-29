@@ -1,0 +1,227 @@
+.fitness-plan-detail {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+
+  .back-button {
+    margin-bottom: 16px;
+    transition: all 0.3s;
+    
+    &:hover {
+      color: #52c41a;
+      border-color: #52c41a;
+    }
+  }
+
+  .main-card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+  }
+
+  .plan-cover-container {
+    height: 300px;
+    background: #f0f2f5;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-end;
+    padding: 16px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+
+    &:hover {
+      transform: scale(1.01);
+    }
+
+    @media (max-width: 768px) {
+      height: 200px;
+    }
+  }
+
+  .plan-cover-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    color: #999;
+    background-color: #f9f9f9;
+  }
+
+  .cover-info {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 4px;
+    width: 100%;
+    position: relative;
+    z-index: 2;
+    backdrop-filter: blur(5px);
+
+    h2 {
+      color: white;
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .cover-tags {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  }
+
+  .plan-title {
+    margin-top: 8px;
+  }
+
+  .plan-info-tags {
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .plan-tabs {
+    margin-top: 16px;
+  }
+
+  .tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .body-part-tag, .equipment-tag {
+    margin-bottom: 8px;
+    font-size: 14px;
+    padding: 4px 12px;
+  }
+
+  .info-card {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    height: fit-content;
+  }
+
+  .card-cover-container {
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .card-cover-image {
+    position: relative;
+    height: 150px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .card-image-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    color: #999;
+    background-color: #f9f9f9;
+  }
+
+  .hidden-image {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .plan-stats {
+    p {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .anticon {
+      color: #52c41a;
+    }
+  }
+
+  .start-card {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .choose-plan-btn {
+    background: #52c41a;
+    border-color: #52c41a;
+    transition: all 0.3s;
+
+    &:hover {
+      background: #73d13d;
+      border-color: #73d13d;
+    }
+  }
+
+  .schedule-collapse {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .week-panel {
+    .ant-collapse-header {
+      font-weight: 500;
+    }
+  }
+
+  .training-timeline {
+    padding: 16px 0;
+  }
+
+  .timeline-item {
+    .day-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .day-description {
+      margin-bottom: 4px;
+      color: rgba(0, 0, 0, 0.65);
+    }
+
+    .view-course-btn {
+      padding: 0;
+      height: auto;
+    }
+  }
+}
+
+.fitness-plan-loading {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.not-found-card {
+  text-align: center;
+  padding: 40px;
+  max-width: 600px;
+  margin: 40px auto;
+
+  .back-button {
+    margin-top: 16px;
+    background: #52c41a;
+    border-color: #52c41a;
+  }
+} 

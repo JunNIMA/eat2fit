@@ -6,14 +6,18 @@ import com.eat2fit.common.response.Result;
 import com.eat2fit.fitness.entity.WorkoutCheckIn;
 import com.eat2fit.fitness.service.WorkoutCheckInService;
 import com.eat2fit.common.util.UserContext;
+import com.eat2fit.common.util.AliyunOSSOperator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,6 +30,9 @@ public class WorkoutCheckInController {
 
     @Autowired
     private WorkoutCheckInService checkInService;
+    
+    @Autowired
+    private AliyunOSSOperator aliyunOSSOperator;
 
     @PostMapping
     @Operation(summary = "训练打卡", description = "用户训练打卡记录")
@@ -46,6 +53,69 @@ public class WorkoutCheckInController {
             return Result.failed(e.getCode(), e.getMessage());
         } catch (Exception e) {
             return Result.failed(e.getMessage());
+        }
+    }
+    
+    @PostMapping("/upload/image")
+    @Operation(summary = "上传打卡图片", description = "上传训练打卡图片")
+    public Result<String> uploadImage(@RequestParam("file") MultipartFile file) {
+        try {
+            // 从UserContext获取用户ID
+            Long userId = UserContext.getUser();
+            if (userId == null) {
+                return Result.failed("用户未登录");
+            }
+            
+            if (file.isEmpty()) {
+                return Result.failed("上传的文件不能为空");
+            }
+            
+            // 检查文件类型
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return Result.failed("只能上传图片文件");
+            }
+            
+            // 使用AliyunOSSOperator上传图片
+            String imageUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+            
+            return Result.success(imageUrl);
+        } catch (Exception e) {
+            return Result.failed("图片上传失败: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/upload/images")
+    @Operation(summary = "批量上传打卡图片", description = "批量上传训练打卡图片")
+    public Result<List<String>> uploadImages(@RequestParam("files") MultipartFile[] files) {
+        try {
+            // 从UserContext获取用户ID
+            Long userId = UserContext.getUser();
+            if (userId == null) {
+                return Result.failed("用户未登录");
+            }
+            
+            if (files == null || files.length == 0) {
+                return Result.failed("上传的文件不能为空");
+            }
+            
+            List<String> imageUrls = new ArrayList<>();
+            
+            for (MultipartFile file : files) {
+                if (!file.isEmpty()) {
+                    // 检查文件类型
+                    String contentType = file.getContentType();
+                    if (contentType != null && contentType.startsWith("image/")) {
+                        // 使用AliyunOSSOperator上传图片
+                        String imageUrl = aliyunOSSOperator.upload(file.getBytes(), file.getOriginalFilename());
+                        imageUrls.add(imageUrl);
+                    }
+                }
+            }
+            
+            return Result.success(imageUrls);
+        } catch (Exception e) {
+            return Result.failed("图片上传失败: " + e.getMessage());
         }
     }
 

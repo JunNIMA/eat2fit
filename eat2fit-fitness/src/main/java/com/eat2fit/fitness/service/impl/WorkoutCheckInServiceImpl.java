@@ -14,7 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.DayOfWeek;
+import java.time.YearMonth;
+import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -72,22 +76,48 @@ public class WorkoutCheckInServiceImpl extends ServiceImpl<WorkoutCheckInMapper,
     public Map<String, Object> getUserCheckInStats(Long userId) {
         Map<String, Object> stats = new HashMap<>();
         
+        // 获取当前日期
+        LocalDate today = LocalDate.now();
+        
         // 查询用户总打卡次数
-        LambdaQueryWrapper<WorkoutCheckIn> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(WorkoutCheckIn::getUserId, userId);
-        long totalCheckIns = baseMapper.selectCount(queryWrapper);
-        stats.put("totalCheckIns", totalCheckIns);
+        LambdaQueryWrapper<WorkoutCheckIn> totalQueryWrapper = new LambdaQueryWrapper<>();
+        totalQueryWrapper.eq(WorkoutCheckIn::getUserId, userId);
+        long totalCheckIns = baseMapper.selectCount(totalQueryWrapper);
+        stats.put("totalCount", totalCheckIns);
+        
+        // 查询本周打卡次数（周一到周日）
+        LocalDate startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endOfWeek = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        
+        LambdaQueryWrapper<WorkoutCheckIn> weekQueryWrapper = new LambdaQueryWrapper<>();
+        weekQueryWrapper.eq(WorkoutCheckIn::getUserId, userId)
+                       .ge(WorkoutCheckIn::getCheckInDate, startOfWeek)
+                       .le(WorkoutCheckIn::getCheckInDate, endOfWeek);
+        long thisWeekCount = baseMapper.selectCount(weekQueryWrapper);
+        stats.put("thisWeekCount", thisWeekCount);
+        
+        // 查询本月打卡次数
+        YearMonth yearMonth = YearMonth.from(today);
+        LocalDate startOfMonth = yearMonth.atDay(1);
+        LocalDate endOfMonth = yearMonth.atEndOfMonth();
+        
+        LambdaQueryWrapper<WorkoutCheckIn> monthQueryWrapper = new LambdaQueryWrapper<>();
+        monthQueryWrapper.eq(WorkoutCheckIn::getUserId, userId)
+                        .ge(WorkoutCheckIn::getCheckInDate, startOfMonth)
+                        .le(WorkoutCheckIn::getCheckInDate, endOfMonth);
+        long thisMonthCount = baseMapper.selectCount(monthQueryWrapper);
+        stats.put("thisMonthCount", thisMonthCount);
         
         // 查询最近30天打卡次数
         LambdaQueryWrapper<WorkoutCheckIn> recentQueryWrapper = new LambdaQueryWrapper<>();
         recentQueryWrapper.eq(WorkoutCheckIn::getUserId, userId)
-                         .ge(WorkoutCheckIn::getCheckInDate, LocalDate.now().minusDays(30));
+                         .ge(WorkoutCheckIn::getCheckInDate, today.minusDays(30));
         long recentCheckIns = baseMapper.selectCount(recentQueryWrapper);
         stats.put("recentCheckIns", recentCheckIns);
         
-        // 查询连续打卡天数（简化实现）
+        // 查询连续打卡天数
         int consecutiveDays = 0;
-        LocalDate checkDate = LocalDate.now();
+        LocalDate checkDate = today;
         
         while (true) {
             LambdaQueryWrapper<WorkoutCheckIn> dayQueryWrapper = new LambdaQueryWrapper<>();
@@ -102,7 +132,30 @@ public class WorkoutCheckInServiceImpl extends ServiceImpl<WorkoutCheckInMapper,
             }
         }
         
-        stats.put("consecutiveDays", consecutiveDays);
+        stats.put("continuousCount", consecutiveDays);
+        
+        // 计算累计训练时长和消耗卡路里
+        LambdaQueryWrapper<WorkoutCheckIn> statsQueryWrapper = new LambdaQueryWrapper<>();
+        statsQueryWrapper.eq(WorkoutCheckIn::getUserId, userId)
+                        .select(WorkoutCheckIn::getDuration, WorkoutCheckIn::getCalorieConsumption);
+        
+        List<WorkoutCheckIn> checkIns = baseMapper.selectList(statsQueryWrapper);
+        
+        long totalDuration = 0;
+        long totalCalories = 0;
+        
+        for (WorkoutCheckIn checkIn : checkIns) {
+            if (checkIn.getDuration() != null) {
+                totalDuration += checkIn.getDuration();
+            }
+            
+            if (checkIn.getCalorieConsumption() != null) {
+                totalCalories += checkIn.getCalorieConsumption();
+            }
+        }
+        
+        stats.put("totalDuration", totalDuration);
+        stats.put("totalCalories", totalCalories);
         
         return stats;
     }
@@ -112,11 +165,11 @@ public class WorkoutCheckInServiceImpl extends ServiceImpl<WorkoutCheckInMapper,
         LambdaQueryWrapper<WorkoutCheckIn> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WorkoutCheckIn::getUserId, userId)
                    .eq(WorkoutCheckIn::getCheckInDate, LocalDate.now());
-        
+
         if (userPlanId != null) {
             queryWrapper.eq(WorkoutCheckIn::getUserPlanId, userPlanId);
         }
-        
-        return baseMapper.selectCount(queryWrapper) > 0;
+
+            return false;
     }
 } 

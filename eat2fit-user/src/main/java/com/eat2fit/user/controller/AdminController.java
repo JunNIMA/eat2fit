@@ -14,6 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,30 @@ public class AdminController {
 
     @Autowired
     private UserService userService;
+
+    /**
+     * 获取用户统计数据
+     */
+    @GetMapping("/users/stats")
+    public Result<Map<String, Object>> getUserStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 获取总用户数
+        LambdaQueryWrapper<User> countQuery = new LambdaQueryWrapper<>();
+        long totalCount = userService.list(countQuery).size();
+        stats.put("totalCount", totalCount);
+        
+        // 获取今日新增用户数
+        LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime todayEnd = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        
+        LambdaQueryWrapper<User> todayQuery = new LambdaQueryWrapper<>();
+        todayQuery.between(User::getCreateTime, todayStart, todayEnd);
+        long todayNewCount = userService.list(todayQuery).size();
+        stats.put("todayNewCount", todayNewCount);
+        
+        return Result.success(stats);
+    }
 
     /**
      * 分页获取用户列表，支持搜索和过滤
