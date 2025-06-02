@@ -13,7 +13,8 @@ import {
   SettingOutlined,
   UnorderedListOutlined,
   BookOutlined,
-  RobotOutlined
+  RobotOutlined,
+  CalendarOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -130,6 +131,12 @@ const MainLayout: React.FC = () => {
       label: '食谱列表',
       icon: <BookOutlined />,
       onClick: () => navigate('/diet/recipes')
+    },
+    {
+      key: '/diet/meals',
+      label: '饮食计划',
+      icon: <CalendarOutlined />,
+      onClick: () => navigate('/diet/meals')
     },
     {
       key: '/diet/favorites',
@@ -466,7 +473,9 @@ const MainLayout: React.FC = () => {
           padding: isMobile ? '16px 8px 72px' : '24px',
           background: '#fff',
           borderRadius: '8px',
-          minHeight: 'auto'
+          minHeight: 'calc(100vh - 112px)',
+          overflowX: 'hidden',
+          position: 'relative'
         }}>
           <Outlet />
         </Content>
@@ -576,6 +585,15 @@ const MainLayout: React.FC = () => {
               label: '食谱列表',
               onClick: () => {
                 navigate('/diet/recipes');
+                setDrawerVisible(false);
+              }
+            },
+            {
+              key: '/diet/meals',
+              icon: <CalendarOutlined />,
+              label: '饮食计划',
+              onClick: () => {
+                navigate('/diet/meals');
                 setDrawerVisible(false);
               }
             },

@@ -17,16 +17,13 @@ export const login = createAsyncThunk(
         return response.data
       } else {
         // 保留完整的错误信息，包括错误码
-        return rejectWithValue({
-          code: response.code,
-          message: response.message || '登录失败'
-        })
+        return rejectWithValue(response.message || '登录失败')
       }
     } catch (error: any) {
-      return rejectWithValue({
-        code: 500,
-        message: error.message || '网络错误'
-      })
+      // 确保返回字符串类型的错误信息
+      const errorMessage = error.message || '网络错误'
+      console.error('登录失败:', errorMessage)
+      return rejectWithValue(errorMessage)
     }
   }
 )
@@ -173,8 +170,20 @@ const authSlice = createSlice({
         // 重置用户信息缓存（不能在这里直接调用）
       })
       .addCase(login.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload as string
+        state.loading = false;
+        
+        // 处理错误载荷
+        if (action.payload) {
+          // payload已经是字符串类型
+          state.error = action.payload as string;
+        } else if (action.error) {
+          // 如果payload不存在但error存在
+          state.error = action.error.message || '登录失败';
+        } else {
+          state.error = '登录失败';
+        }
+        
+        console.log('登录失败，错误信息:', state.error);
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
         state.isLoggedIn = action.payload

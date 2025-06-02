@@ -7,7 +7,8 @@ import {
   ClockCircleOutlined, 
   RightOutlined,
   HeartOutlined,
-  HeartFilled
+  HeartFilled,
+  PictureOutlined
 } from '@ant-design/icons';
 import { useAppSelector } from '@/store/hooks';
 import { 
@@ -210,7 +211,20 @@ const Dashboard = () => {
       
       const res = await getRecommendRecipes(4, recipesTokenRef.current); // 获取4个推荐食谱
       if (res.code === 200) {
-        setRecommendedRecipes(res.data || []);
+        // 确保每个食谱的图片URL都是有效的
+        const recipes = res.data || [];
+        
+        // 设置推荐食谱数据
+        setRecommendedRecipes(recipes);
+        
+        // 预加载图片
+        recipes.forEach(recipe => {
+          if (recipe.coverImg) {
+            const img = new Image();
+            img.src = getImageUrl(recipe.coverImg) || '';
+            img.onerror = () => handleImageError(recipe.id);
+          }
+        });
       }
     } catch (error) {
       if (axios.isCancel(error)) {
@@ -251,7 +265,7 @@ const Dashboard = () => {
   
   // 前往健身计划页
   const goToFitnessPlan = () => {
-    navigate('/fitness/plans');
+    navigate('/fitness');
   };
   
   // 前往饮食计划页
@@ -304,6 +318,34 @@ const Dashboard = () => {
   const getColorByGoal = (goal: number): string => {
     const colors = ['', 'green', 'blue', 'purple', 'orange'];
     return colors[goal] || 'default';
+  };
+  
+  // 处理图片URL，确保完整路径
+  const getImageUrl = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    
+    // 如果已经是完整URL（以http或https开头），则直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // 如果是相对路径，添加基础URL（根据实际API调整）
+    if (url.startsWith('/')) {
+      return `${process.env.REACT_APP_API_BASE_URL || '/api'}${url}`;
+    }
+    
+    // 其他情况，假设是相对于API的路径
+    return `${process.env.REACT_APP_API_BASE_URL || '/api'}/${url}`;
+  };
+  
+  // 图片加载错误处理
+  const [imgErrorMap, setImgErrorMap] = useState<Record<number, boolean>>({});
+  
+  const handleImageError = (recipeId: number) => {
+    setImgErrorMap(prev => ({
+      ...prev,
+      [recipeId]: true
+    }));
   };
 
   return (
@@ -444,62 +486,75 @@ const Dashboard = () => {
         loading={recipesLoading}
       >
         <Row gutter={[16, 16]}>
-          {recommendedRecipes.map(recipe => (
-            <Col key={recipe.id} xs={24} sm={12} md={8} lg={6}>
-              <Card 
-                hoverable 
-                style={{ height: '100%' }}
-                onClick={() => goToRecipeDetail(recipe.id)}
-                cover={
-                  <div style={{ 
-                    height: 120, 
-                    backgroundImage: recipe.coverImg ? `url(${recipe.coverImg})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: recipe.coverImg ? undefined : '#f0f2f5',
-                    position: 'relative'
-                  }}>
-                    {!recipe.coverImg && <FireOutlined style={{ fontSize: 32, color: '#52c41a' }} />}
+          {recommendedRecipes.map(recipe => {
+            // 检查图片是否有错误
+            const hasImageError = imgErrorMap[recipe.id];
+            // 获取图片URL
+            const imageUrl = getImageUrl(recipe.coverImg);
+            // 是否显示默认图标
+            const showDefaultIcon = !recipe.coverImg || hasImageError;
+            
+            return (
+              <Col key={recipe.id} xs={24} sm={12} md={8} lg={6}>
+                <Card 
+                  hoverable 
+                  style={{ height: '100%' }}
+                  onClick={() => goToRecipeDetail(recipe.id)}
+                  cover={
                     <div 
                       style={{ 
-                        position: 'absolute', 
-                        top: 8, 
-                        right: 8,
-                        background: 'rgba(255,255,255,0.8)',
-                        borderRadius: '50%',
-                        width: 32,
-                        height: 32,
+                        height: 120, 
+                        backgroundImage: !showDefaultIcon ? `url(${imageUrl})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        backgroundColor: showDefaultIcon ? '#f0f2f5' : undefined,
+                        position: 'relative'
                       }}
-                      onClick={(e) => handleToggleFavorite(e, recipe)}
                     >
-                      {recipe.isFavorite ? 
-                        <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : 
-                        <HeartOutlined style={{ color: '#999', fontSize: 18 }} />
-                      }
-                    </div>
-                  </div>
-                }
-              >
-                <Card.Meta
-                  title={recipe.title}
-                  description={
-                    <>
-                      <Tag color={getColorByGoal(recipe.fitnessGoal)}>{recipe.fitnessGoalText}</Tag>
-                      <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
-                        {recipe.calories}千卡 · {recipe.prepTime + recipe.cookTime}分钟
+                      {showDefaultIcon && (
+                        <PictureOutlined style={{ fontSize: 32, color: '#52c41a' }} />
+                      )}
+                      <div 
+                        style={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8,
+                          background: 'rgba(255,255,255,0.8)',
+                          borderRadius: '50%',
+                          width: 32,
+                          height: 32,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onClick={(e) => handleToggleFavorite(e, recipe)}
+                      >
+                        {recipe.isFavorite ? 
+                          <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : 
+                          <HeartOutlined style={{ color: '#999', fontSize: 18 }} />
+                        }
                       </div>
-                    </>
+                    </div>
                   }
-                />
-              </Card>
-            </Col>
-          ))}
+                >
+                  <Card.Meta
+                    title={recipe.title}
+                    description={
+                      <>
+                        <Tag color={getColorByGoal(recipe.fitnessGoal)}>{recipe.fitnessGoalText}</Tag>
+                        <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
+                          {recipe.calories}千卡 · {recipe.prepTime + recipe.cookTime}分钟
+                        </div>
+                      </>
+                    }
+                  />
+                </Card>
+              </Col>
+            );
+          })}
         </Row>
       </Card>
       
