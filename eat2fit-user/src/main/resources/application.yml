@@ -48,4 +48,6 @@ pagehelper:
 logging:
   level:
     com.eat2fit: debug
-    org.springframework: info 
+    org.springframework: info
+
+#    受到法律监督撒离开
