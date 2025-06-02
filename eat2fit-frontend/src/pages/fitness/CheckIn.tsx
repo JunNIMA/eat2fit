@@ -29,7 +29,8 @@ import {
   CheckCircleOutlined,
   PlusOutlined, 
   UploadOutlined,
-  TrophyOutlined
+  TrophyOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -38,7 +39,11 @@ import {
   getCheckInStats, 
   hasCheckedInToday, 
   CheckIn as CheckInType,
-  getCurrentPlan
+  getCurrentPlan,
+  uploadCheckInImage,
+  uploadCheckInImages,
+  getCourses,
+  Course
 } from '@/api/fitness';
 import { handleApiError } from '@/utils/errorHandler';
 import { createCancelToken } from '@/utils/request';
@@ -75,9 +80,10 @@ const CheckInPage: React.FC = () => {
     totalCount: number;
     thisWeekCount: number;
     thisMonthCount: number;
+    recentCheckIns: number;
     continuousCount: number;
-    totalCalories: number;
     totalDuration: number;
+    totalCalories: number;
   } | null>(null);
   const [userPlanId, setUserPlanId] = useState<number | null>(null);
   const [todayChecked, setTodayChecked] = useState<boolean>(false);
@@ -90,6 +96,15 @@ const CheckInPage: React.FC = () => {
   const statsTokenRef = useRef<CancelTokenSource | null>(null);
   const checkStatusTokenRef = useRef<CancelTokenSource | null>(null);
   const submitTokenRef = useRef<CancelTokenSource | null>(null);
+  
+  // 添加图片上传相关的状态
+  const [uploadLoading, setUploadLoading] = useState<boolean>(false);
+  const uploadTokenRef = useRef<CancelTokenSource | null>(null);
+
+  // 添加课程列表状态
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState<boolean>(false);
+  const coursesTokenRef = useRef<CancelTokenSource | null>(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -227,6 +242,50 @@ const CheckInPage: React.FC = () => {
     }
   }, []);
 
+  // 加载课程列表
+  useEffect(() => {
+    const loadCourses = async () => {
+      // 取消先前的请求
+      if (coursesTokenRef.current) {
+        coursesTokenRef.current.cancel('新请求发起，取消旧请求');
+      }
+      
+      // 创建新的取消令牌
+      coursesTokenRef.current = createCancelToken();
+      
+      setCoursesLoading(true);
+      try {
+        const response = await getCourses({
+          current: 1,
+          size: 100 // 获取足够多的课程
+        }, coursesTokenRef.current);
+        
+        if (response.success) {
+          setCourses(response.data.records);
+        } else {
+          message.error(response.message || '获取课程列表失败');
+        }
+      } catch (error: any) {
+        if (axios.isCancel(error)) {
+          console.log('获取课程列表请求已取消:', error.message);
+        } else {
+          console.error('获取课程列表失败', error);
+        }
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+    
+    loadCourses();
+    
+    // 组件卸载时取消请求
+    return () => {
+      if (coursesTokenRef.current) {
+        coursesTokenRef.current.cancel('组件卸载，取消请求');
+      }
+    };
+  }, []);
+
   // 初始加载打卡记录
   useEffect(() => {
     if (activeTab === 'list') {
@@ -252,7 +311,85 @@ const CheckInPage: React.FC = () => {
     };
   }, [activeTab, loadCheckInRecords, loadCheckInStats]);
 
-  // 提交打卡
+  // 处理图片上传
+  const handleUpload = async (file: File): Promise<boolean> => {
+    setUploadLoading(true);
+    
+    try {
+      // 取消先前的请求
+      if (uploadTokenRef.current) {
+        uploadTokenRef.current.cancel('新请求发起，取消旧请求');
+      }
+      
+      // 创建新的取消令牌
+      uploadTokenRef.current = createCancelToken();
+      
+      const response = await uploadCheckInImage(file, uploadTokenRef.current);
+      if (response.success && response.data) {
+        // 添加新上传的图片URL到状态中
+        setUploadedImages([...uploadedImages, response.data]);
+        message.success('图片上传成功');
+        return true;
+      } else {
+        message.error(response.message || '图片上传失败');
+        return false;
+      }
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.log('图片上传请求已取消:', error.message);
+      } else {
+        message.error('图片上传失败: ' + error.message);
+      }
+      return false;
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+  
+  // 处理批量图片上传
+  const handleBatchUpload = async (fileList: File[]): Promise<boolean> => {
+    if (fileList.length === 0) return true;
+    
+    setUploadLoading(true);
+    
+    try {
+      // 取消先前的请求
+      if (uploadTokenRef.current) {
+        uploadTokenRef.current.cancel('新请求发起，取消旧请求');
+      }
+      
+      // 创建新的取消令牌
+      uploadTokenRef.current = createCancelToken();
+      
+      const response = await uploadCheckInImages(fileList, uploadTokenRef.current);
+      if (response.success && response.data) {
+        // 添加新上传的图片URL到状态中
+        setUploadedImages([...uploadedImages, ...response.data]);
+        message.success(`成功上传${response.data.length}张图片`);
+        return true;
+      } else {
+        message.error(response.message || '图片上传失败');
+        return false;
+      }
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.log('图片上传请求已取消:', error.message);
+      } else {
+        message.error('图片上传失败: ' + error.message);
+      }
+      return false;
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+  
+  // 移除已上传的图片
+  const handleRemoveImage = (index: number) => {
+    const newImages = [...uploadedImages];
+    newImages.splice(index, 1);
+    setUploadedImages(newImages);
+  };
+
   const handleSubmit = async (values: any) => {
     // 如果今日已打卡，提示并返回
     if (todayChecked) {
@@ -270,13 +407,13 @@ const CheckInPage: React.FC = () => {
     
     setCheckInLoading(true);
     try {
-      // 拼接图片路径
+      // 添加图片URL
       const images = uploadedImages.length > 0 ? uploadedImages.join(',') : undefined;
+      values.images = images;
       
       const data = {
         ...values,
         checkInDate: new Date().toISOString().split('T')[0], // 当前日期
-        images
       };
       
       const response = await checkIn(data, submitTokenRef.current);
@@ -307,22 +444,49 @@ const CheckInPage: React.FC = () => {
     setDateRange(dateStrings[0] && dateStrings[1] ? dateStrings : null);
   };
 
-  // 图片上传配置
+  // 处理课程选择变化
+  const handleCourseChange = (courseId: number) => {
+    const selectedCourse = courses.find(course => course.id === courseId);
+    if (selectedCourse) {
+      // 自动填充训练时长和卡路里消耗
+      form.setFieldsValue({
+        duration: selectedCourse.duration || undefined,
+        calorieConsumption: selectedCourse.calories || undefined
+      });
+    }
+  };
+
+  // 修改上传组件的属性
   const uploadProps: UploadProps = {
     name: 'file',
-    action: '/api/upload', // 上传接口，需要替换为实际的上传接口
-    multiple: true,
-    listType: 'picture-card',
+    multiple: false,
+    showUploadList: false,
+    beforeUpload: async (file) => {
+      // 检查文件类型
+      const isImage = file.type.startsWith('image/');
+      if (!isImage) {
+        message.error('只能上传图片文件!');
+        return Upload.LIST_IGNORE;
+      }
+      
+      // 检查文件大小，限制为5MB
+      const isLt5M = file.size / 1024 / 1024 < 5;
+      if (!isLt5M) {
+        message.error('图片必须小于5MB!');
+        return Upload.LIST_IGNORE;
+      }
+      
+      // 上传图片
+      const success = await handleUpload(file);
+      return success ? false : Upload.LIST_IGNORE;
+    },
     onChange(info) {
       if (info.file.status === 'done') {
-        // 上传成功，保存图片URL
-        const imageUrl = info.file.response.data;
-        setUploadedImages([...uploadedImages, imageUrl]);
         message.success(`${info.file.name} 上传成功`);
       } else if (info.file.status === 'error') {
         message.error(`${info.file.name} 上传失败`);
       }
-    },
+    }
   };
 
   // 格式化日期
@@ -369,8 +533,26 @@ const CheckInPage: React.FC = () => {
               <Input />
             </Form.Item>
             
-            <Form.Item name="courseId" label="训练课程ID" rules={[{ required: true, message: '请输入课程ID' }]}>
-              <InputNumber style={{ width: '100%' }} placeholder="输入你完成的课程ID" />
+            <Form.Item 
+              name="courseId" 
+              label="训练课程" 
+              rules={[{ required: true, message: '请选择训练课程' }]}
+            >
+              <Select
+                placeholder="选择训练课程"
+                loading={coursesLoading}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.label?.toString() || '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={courses.map(course => ({
+                  value: course.id,
+                  label: `${course.title} (${course.duration || 0}分钟, ${course.calories || 0}千卡)`,
+                  disabled: false
+                }))}
+                onChange={handleCourseChange}
+              />
             </Form.Item>
             
             <Form.Item name="duration" label="训练时长(分钟)" rules={[{ required: true, message: '请输入训练时长' }]}>
@@ -403,13 +585,33 @@ const CheckInPage: React.FC = () => {
               <TextArea rows={4} placeholder="记录一下今天的训练感受..." />
             </Form.Item>
             
-            <Form.Item label="上传照片">
-              <Upload {...uploadProps}>
-                <div>
-                  <PlusOutlined />
-                  <div style={{ marginTop: 8 }}>上传</div>
-                </div>
-              </Upload>
+            <Form.Item label="训练照片">
+              <div className="upload-list">
+                {uploadedImages.map((url, index) => (
+                  <div key={index} className="upload-item">
+                    <img src={url} alt={`训练照片${index + 1}`} />
+                    <Button 
+                      type="text" 
+                      danger 
+                      icon={<DeleteOutlined />} 
+                      onClick={() => handleRemoveImage(index)}
+                    />
+                  </div>
+                ))}
+                
+                <Upload {...uploadProps}>
+                  <Button 
+                    icon={<UploadOutlined />} 
+                    loading={uploadLoading}
+                    disabled={uploadedImages.length >= 9}
+                  >
+                    上传照片
+                  </Button>
+                </Upload>
+              </div>
+              <div className="upload-tip">
+                最多上传9张照片，每张不超过5MB
+              </div>
             </Form.Item>
             
             <Form.Item>
@@ -615,4 +817,58 @@ const CheckInPage: React.FC = () => {
   );
 };
 
-export default CheckInPage; 
+export default CheckInPage;
+
+// 添加CSS样式
+const styles = `
+  .upload-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .upload-item {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    padding: 4px;
+    overflow: hidden;
+  }
+  
+  .upload-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .upload-item button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    padding: 4px;
+    font-size: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .upload-tip {
+    color: #999;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+`;
+
+// 将样式添加到文档中
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.innerHTML = styles;
+  document.head.appendChild(styleElement);
+} 

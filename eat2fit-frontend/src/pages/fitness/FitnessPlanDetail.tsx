@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Card, 
@@ -14,7 +14,9 @@ import {
   Timeline, 
   Collapse, 
   Modal, 
-  Empty 
+  Empty,
+  Skeleton,
+  Tabs
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -24,10 +26,13 @@ import {
   HeartOutlined, 
   HeartFilled,
   PlayCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  FireOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import { getPlanDetail, getPlanDetailsById, Plan, PlanDetail, addFavorite, removeFavorite, checkFavorite, choosePlan } from '@/api/fitness';
 import { handlePlanSelectionError, handleApiError } from '@/utils/errorHandler';
+import './FitnessPlanDetail.less';
 
 const { Title, Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -42,6 +47,7 @@ const FitnessPlanDetail: React.FC = () => {
   const [details, setDetails] = useState<PlanDetail[]>([]);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 768);
+  const [activeTab, setActiveTab] = useState<string>('overview');
   
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -60,19 +66,15 @@ const FitnessPlanDetail: React.FC = () => {
       try {
         // 获取计划基本信息
         const response = await getPlanDetail(Number(id));
-        console.log('API 响应数据:', response);
         
         if (response.success || response.code === 200) {
           let data = response.data;
-          console.log('计划基本信息:', data);
           
           // 支持两种可能的数据结构
           planData = data.plan || data;
           
           // 确保coverImg属性存在并且是有效的URL
           if (planData) {
-            console.log('原始计划封面图片URL:', planData.coverImg);
-            
             // 处理封面图片URL
             if (planData.coverImg) {
               // 如果封面URL是相对路径，需要添加正确的前缀
@@ -90,8 +92,6 @@ const FitnessPlanDetail: React.FC = () => {
               const randomStr = Math.random().toString(36).substring(2, 8);
               const separator = planData.coverImg.includes('?') ? '&' : '?';
               planData.coverImg = `${planData.coverImg}${separator}v=${timestamp}-${randomStr}`;
-              
-              console.log('处理后的封面URL:', planData.coverImg);
             }
             
             setPlan(planData);
@@ -115,11 +115,9 @@ const FitnessPlanDetail: React.FC = () => {
           // 检查是否已收藏
           checkFavoriteStatus(Number(id));
         } else {
-          console.error('获取计划基本信息失败:', response.message);
           message.error(response.message || '获取计划信息失败');
         }
       } catch (error) {
-        console.error('获取计划详情出错:', error);
         message.error('网络错误，请稍后重试');
       } finally {
         setLoading(false);
@@ -205,13 +203,10 @@ const FitnessPlanDetail: React.FC = () => {
   };
   
   // 根据周信息对训练日程进行分组
-  const getWeeklyDetails = () => {
+  const weeklyDetails = useMemo(() => {
     const weekMap: {[key: number]: PlanDetail[]} = {};
     
-    console.log('组织训练日程，原始数据:', details);
-    
     if (!Array.isArray(details) || details.length === 0) {
-      console.log('无训练安排数据或数据格式不正确');
       return [];
     }
     
@@ -223,22 +218,16 @@ const FitnessPlanDetail: React.FC = () => {
       weekMap[weekNum].push(detail);
     });
     
-    const result = Object.keys(weekMap).map(week => ({
+    return Object.keys(weekMap).map(week => ({
       week: parseInt(week),
       details: weekMap[parseInt(week)].sort((a, b) => (a.dayNum || 0) - (b.dayNum || 0))
     }));
-    
-    console.log('训练日程分组结果:', result);
-    return result;
-  };
-  
-  // 生成周按计划
-  const weeklyDetails = getWeeklyDetails();
+  }, [details]);
   
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <Spin size="large" tip="加载训练计划中..." />
+      <div className="fitness-plan-loading">
+        <Skeleton active avatar paragraph={{ rows: 10 }} />
       </div>
     );
   }
@@ -248,188 +237,198 @@ const FitnessPlanDetail: React.FC = () => {
   
   if (!plan && !hasPlanDetails) {
     return (
-      <Card>
-        <div style={{ textAlign: 'center' }}>
-          <Title level={4}>未找到训练计划</Title>
+      <Card className="not-found-card">
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description="未找到训练计划"
+        />
           <Button 
             type="primary" 
             icon={<ArrowLeftOutlined />} 
             onClick={() => navigate('/fitness')}
-            style={{ marginTop: 16, background: '#52c41a', borderColor: '#52c41a' }}
+          className="back-button"
           >
             返回列表
           </Button>
-        </div>
       </Card>
     );
   }
+  
+  const tabItems = [
+    {
+      key: 'overview',
+      label: '计划概览',
+      icon: <InfoCircleOutlined />,
+      children: (
+        <>
+          <Paragraph>{plan?.description}</Paragraph>
+          
+          {plan?.bodyFocus && (
+            <>
+              <Divider orientation="left">重点锻炼部位</Divider>
+              <div className="tag-container">
+                {plan.bodyFocus.split(',').map((part, index) => (
+                  <Tag key={index} className="body-part-tag">{part.trim()}</Tag>
+                ))}
+              </div>
+            </>
+          )}
+          
+          {plan?.equipmentNeeded && (
+            <>
+              <Divider orientation="left">所需器材</Divider>
+              <div className="tag-container">
+                {plan.equipmentNeeded.split(',').map((item, index) => (
+                  <Tag key={index} className="equipment-tag">{item.trim()}</Tag>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )
+    },
+    {
+      key: 'schedule',
+      label: '训练日程',
+      icon: <CalendarOutlined />,
+      children: (
+        <>
+          {weeklyDetails && weeklyDetails.length > 0 ? (
+            <Collapse defaultActiveKey={['1']} className="schedule-collapse">
+              {weeklyDetails.map(week => (
+                <Panel 
+                  header={`第 ${week.week} 周`} 
+                  key={week.week}
+                  className="week-panel"
+                >
+                  <Timeline className="training-timeline">
+                    {week.details.map((detail, index) => (
+                      <Timeline.Item key={detail.id || index} className="timeline-item">
+                        <div className="day-title">
+                          第 {detail.dayNum || '?'} 天: {detail.title || '未命名训练'}
+                        </div>
+                        <div className="day-description">{detail.description || '无描述'}</div>
+                        {detail.courseId && (
+                          <Button 
+                            type="link" 
+                            className="view-course-btn"
+                            onClick={() => navigate(`/fitness/courses/${detail.courseId}`)}
+                          >
+                            查看相关课程
+                          </Button>
+                        )}
+                      </Timeline.Item>
+                    ))}
+                  </Timeline>
+                </Panel>
+              ))}
+            </Collapse>
+          ) : (
+            <Empty description="暂无训练日程信息" />
+          )}
+        </>
+      )
+    }
+  ];
   
   return (
     <div className="fitness-plan-detail">
       <Button 
         icon={<ArrowLeftOutlined />} 
         onClick={() => navigate('/fitness')}
-        style={{ marginBottom: 16 }}
+        className="back-button"
       >
         返回列表
       </Button>
       
-      <Card bordered={false}>
+      <Card bordered={false} className="main-card">
         {plan && (
           <Row gutter={[24, 16]}>
             <Col xs={24} md={16}>
               <div 
-                id="plan-cover-container"
+                className="plan-cover-container"
                 style={{ 
-                  height: isMobile ? 200 : 300,
-                  background: '#f0f2f5', 
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  padding: '16px',
                   backgroundImage: plan.coverImg ? `url(${plan.coverImg})` : undefined,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               >
-                {/* 强制隐藏占位符，确保封面显示 */}
                 <div 
-                  id="plan-cover-placeholder"
+                  className="plan-cover-placeholder"
                   style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
                     display: plan.coverImg ? 'none' : 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    fontSize: '24px',
-                    color: '#999',
-                    backgroundColor: '#f9f9f9'
                   }}
                 >
                   训练计划封面
                 </div>
                 
-                {/* 隐藏测试图片，用于确认图片URL是否有效 */}
                 <img 
                   src={plan.coverImg} 
                   alt="计划封面" 
                   style={{ display: 'none' }}
                   onLoad={() => {
-                    console.log('封面图片加载成功:', plan.coverImg);
-                    // 图片加载成功时，确保占位符隐藏
-                    const placeholderEl = document.getElementById('plan-cover-placeholder');
-                    if (placeholderEl) placeholderEl.style.display = 'none';
+                    const placeholderEl = document.querySelector('.plan-cover-placeholder');
+                    if (placeholderEl) (placeholderEl as HTMLElement).style.display = 'none';
                   }}
                   onError={() => {
-                    console.error('封面图片加载失败:', plan.coverImg);
-                    // 图片加载失败时，显示占位符
-                    const placeholderEl = document.getElementById('plan-cover-placeholder');
-                    if (placeholderEl) placeholderEl.style.display = 'flex';
-                    // 清除背景图
-                    const containerEl = document.getElementById('plan-cover-container') as HTMLElement;
-                    if (containerEl) containerEl.style.backgroundImage = 'none';
+                    const placeholderEl = document.querySelector('.plan-cover-placeholder');
+                    if (placeholderEl) (placeholderEl as HTMLElement).style.display = 'flex';
+                    
+                    const containerEl = document.querySelector('.plan-cover-container');
+                    if (containerEl) (containerEl as HTMLElement).style.backgroundImage = 'none';
                   }}
                 />
                 
-                <div 
-                  style={{ 
-                    background: 'rgba(0,0,0,0.6)', 
-                    color: 'white', 
-                    padding: '8px 16px', 
-                    borderRadius: 4,
-                    width: '100%',
-                    position: 'relative',
-                    zIndex: 2
-                  }}
-                >
-                  <h2 style={{ color: 'white', margin: 0 }}>{plan.name}</h2>
-                  <div style={{ marginTop: 8 }}>
+                <div className="cover-info">
+                  <h2>{plan.name}</h2>
+                  <div className="cover-tags">
                     <Tag color={getGoalColor(plan.fitnessGoal)}>{plan.fitnessGoalText}</Tag>
                     <Tag color={getDifficultyColor(plan.difficulty)}>{plan.difficultyText}</Tag>
                   </div>
                 </div>
               </div>
               
-              <Title level={2}>{plan.name}</Title>
-              <Space style={{ marginBottom: 16 }}>
+              <Title level={2} className="plan-title">{plan.name}</Title>
+              <Space className="plan-info-tags">
                 <Tag color={getGoalColor(plan.fitnessGoal)}>{plan.fitnessGoalText}</Tag>
                 <Tag color={getDifficultyColor(plan.difficulty)}>{plan.difficultyText}</Tag>
                 <Tag icon={<ClockCircleOutlined />}>{plan.durationWeeks} 周计划</Tag>
                 <Tag icon={<CalendarOutlined />}>每周 {plan.sessionsPerWeek} 次</Tag>
               </Space>
               
-              <Paragraph>{plan.description}</Paragraph>
-              
-              {plan.bodyFocus && (
-                <>
-                  <Divider orientation="left">重点锻炼部位</Divider>
-                  <div>
-                    {plan.bodyFocus.split(',').map((part, index) => (
-                      <Tag key={index} style={{ marginBottom: 8 }}>{part.trim()}</Tag>
-                    ))}
-                  </div>
-                </>
-              )}
-              
-              {plan.equipmentNeeded && (
-                <>
-                  <Divider orientation="left">所需器材</Divider>
-                  <div>
-                    {plan.equipmentNeeded.split(',').map((item, index) => (
-                      <Tag key={index} style={{ marginBottom: 8 }}>{item.trim()}</Tag>
-                    ))}
-                  </div>
-                </>
-              )}
+              <Tabs 
+                activeKey={activeTab} 
+                onChange={setActiveTab}
+                items={tabItems}
+                className="plan-tabs"
+              />
             </Col>
             
             <Col xs={24} md={8}>
               <Card 
                 title="计划信息" 
-                style={{ marginBottom: 16 }}
+                className="info-card"
                 actions={[
                   <Button 
                     type="text" 
                     icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
                     onClick={handleToggleFavorite}
+                    className="favorite-btn"
                   >
                     {isFavorite ? '取消收藏' : '收藏'}
                   </Button>
                 ]}
               >
                 {plan.coverImg && (
-                  <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                  <div className="card-cover-container">
                     <div 
+                      className="card-cover-image"
                       style={{ 
-                        position: 'relative',
-                        height: '150px',
                         background: `url(${plan.coverImg}) center/cover no-repeat`,
-                        borderRadius: '4px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                        overflow: 'hidden'
                       }}
                     >
                       <div 
-                        id="card-image-placeholder"
+                        className="card-image-placeholder"
                         style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
                           display: 'none',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          fontSize: '14px',
-                          color: '#999',
-                          backgroundColor: '#f9f9f9'
                         }}
                       >
                         图片加载失败
@@ -438,86 +437,44 @@ const FitnessPlanDetail: React.FC = () => {
                       <img 
                         src={plan.coverImg} 
                         alt={plan.name} 
-                        style={{ 
-                          position: 'absolute',
-                          opacity: 0,
-                          width: '1px',
-                          height: '1px'
-                        }} 
-                        onLoad={() => console.log('卡片封面图片加载成功:', plan.coverImg)}
+                        className="hidden-image" 
+                        onLoad={() => {}}
                         onError={() => {
-                          console.error('卡片中封面图片加载失败:', plan.coverImg);
-                          // 图片加载失败时显示占位符
-                          const parent = document.getElementById('card-image-placeholder');
-                          if (parent) {
-                            parent.style.display = 'flex';
-                          }
-                          // 清除背景图
-                          const imgContainer = parent?.parentElement;
+                          const placeholder = document.querySelector('.card-image-placeholder');
+                          if (placeholder) (placeholder as HTMLElement).style.display = 'flex';
+                          
+                          const imgContainer = document.querySelector('.card-cover-image');
                           if (imgContainer) {
-                            imgContainer.style.backgroundImage = 'none';
-                            imgContainer.style.backgroundColor = '#f9f9f9';
+                            (imgContainer as HTMLElement).style.backgroundImage = 'none';
+                            (imgContainer as HTMLElement).style.backgroundColor = '#f9f9f9';
                           }
                         }}
                       />
                     </div>
                   </div>
                 )}
+                <div className="plan-stats">
                 <p><DashboardOutlined /> 难度: {plan.difficultyText}</p>
                 <p><ClockCircleOutlined /> 持续时间: {plan.durationWeeks} 周</p>
                 <p><CalendarOutlined /> 训练频率: 每周 {plan.sessionsPerWeek} 次</p>
-                <p><DashboardOutlined /> 总训练天数: {plan.totalDays} 天</p>
+                  <p><FireOutlined /> 总训练天数: {plan.totalDays} 天</p>
+                </div>
               </Card>
               
-              <Card title="开始训练">
+              <Card title="开始训练" className="start-card">
                 <p>准备好开始这个训练计划了吗？</p>
                 <Button 
                   type="primary" 
                   icon={<PlayCircleOutlined />} 
                   block
                   onClick={handleChoosePlan}
-                  style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                  className="choose-plan-btn"
                 >
                   选择此计划
                 </Button>
               </Card>
             </Col>
           </Row>
-        )}
-        
-        {/* 训练日程部分 - 始终显示，即使没有计划基本信息 */}
-        <Divider orientation="left">训练日程</Divider>
-        {weeklyDetails && weeklyDetails.length > 0 ? (
-          <Collapse defaultActiveKey={['1']}>
-            {weeklyDetails.map(week => (
-              <Panel 
-                header={`第 ${week.week} 周`} 
-                key={week.week}
-              >
-                <Timeline>
-                  {week.details.map((detail, index) => (
-                    <Timeline.Item key={detail.id || index}>
-                      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                        第 {detail.dayNum || '?'} 天: {detail.title || '未命名训练'}
-                      </div>
-                      <div style={{ marginBottom: 4 }}>{detail.description || '无描述'}</div>
-                      {detail.courseId && (
-                        <Button 
-                          type="link" 
-                          style={{ padding: 0, height: 'auto' }}
-                          onClick={() => navigate(`/fitness/courses/${detail.courseId}`)}
-                        >
-                          查看相关课程
-                        </Button>
-                      )}
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
-              </Panel>
-            ))}
-          </Collapse>
-        ) : (
-          <Empty description="暂无训练日程信息" />
         )}
       </Card>
     </div>

@@ -275,13 +275,35 @@ export const getCheckInList = (startDate?: string, endDate?: string, current: nu
   return request.get('/fitness/checkin/list', { params: { startDate, endDate, current, size }, cancelToken: cancelToken?.token });
 };
 
+// 新增图片上传接口
+export const uploadCheckInImage = (file: File, cancelToken?: CancelTokenSource): Promise<ApiResponse<string>> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request.post('/fitness/checkin/upload/image', formData, { 
+    headers: { 'Content-Type': 'multipart/form-data' },
+    cancelToken: cancelToken?.token 
+  });
+};
+
+export const uploadCheckInImages = (files: File[], cancelToken?: CancelTokenSource): Promise<ApiResponse<string[]>> => {
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
+  return request.post('/fitness/checkin/upload/images', formData, { 
+    headers: { 'Content-Type': 'multipart/form-data' },
+    cancelToken: cancelToken?.token 
+  });
+};
+
 export const getCheckInStats = (cancelToken?: CancelTokenSource): Promise<ApiResponse<{
   totalCount: number;
   thisWeekCount: number;
   thisMonthCount: number;
+  recentCheckIns: number;
   continuousCount: number;
-  totalCalories: number;
   totalDuration: number;
+  totalCalories: number;
 }>> => {
   return request.get('/fitness/checkin/stats', { cancelToken: cancelToken?.token });
 };

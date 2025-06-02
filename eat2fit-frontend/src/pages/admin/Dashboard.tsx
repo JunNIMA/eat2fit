@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Table, Button, Typography, message } from 'antd';
 import { UserOutlined, SolutionOutlined, TeamOutlined, FileOutlined } from '@ant-design/icons';
-import { getUserList } from '@/api/user';
+import { getUserList, getUserStats } from '@/api/user';
 import { getFitnessPlanStats } from '@/api/fitness';
 import { getDietRecipeStats } from '@/api/diet';
 import { handleApiError } from '@/utils/errorHandler';
@@ -49,6 +49,15 @@ const AdminDashboard: React.FC = () => {
           }));
         }
         
+        // 获取用户统计数据（包括今日新增用户）
+        const userStatsResponse = await getUserStats();
+        if (handleApiError(userStatsResponse, false)) {
+          setStats(prev => ({
+            ...prev,
+            newUsersToday: userStatsResponse.data.todayNewCount
+          }));
+        }
+        
         // 获取健身计划统计数据
         const fitnessStatsResponse = await getFitnessPlanStats();
         if (handleApiError(fitnessStatsResponse, false)) {
@@ -66,15 +75,6 @@ const AdminDashboard: React.FC = () => {
             dietPlansCount: dietStatsResponse.data.totalCount
           }));
         }
-
-        // 计算今日新增数据（健身计划和饮食方案的新增总和）
-        const todayNewFitness = fitnessStatsResponse.data?.todayNewCount || 0;
-        const todayNewDiet = dietStatsResponse.data?.todayNewCount || 0;
-        setStats(prev => ({
-          ...prev,
-          newUsersToday: todayNewFitness + todayNewDiet
-        }));
-        
       } catch (error) {
         console.error('获取仪表盘数据失败:', error);
       } finally {
@@ -153,7 +153,7 @@ const AdminDashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="今日新增"
+              title="今日新增用户"
               value={stats.newUsersToday}
               loading={loading}
               prefix={<TeamOutlined />}
