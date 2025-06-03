@@ -6,9 +6,9 @@ spring:
     name: eat2fit-diet
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://47.109.137.60/eat2fit_diet?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://${eat2fit.db.host}/eat2fit_diet?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
-    password: 123
+    password: ${eat2fit.db.pw}
   cloud:
     nacos:
       discovery:
