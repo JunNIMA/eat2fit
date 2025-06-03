@@ -2,10 +2,12 @@ package com.eat2fit.ai.controller;
 
 import com.eat2fit.ai.constants.SystemConstants;
 import com.eat2fit.ai.repository.ChatHistoryRepository;
+import com.eat2fit.ai.vo.HealthQARequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
@@ -29,20 +31,18 @@ public class HealthQAController {
 
     /**
      * 健康知识问答
-     * @param prompt
-     * @param chatId
-     * @return
+     * @param request 包含prompt和chatId的请求对象
+     * @return 流式响应
      */
-    @PostMapping("/qa")
-    public Flux<String> answerHealthQuestion(@RequestParam("prompt") String prompt,
-                                             @RequestParam("chatId") String chatId) {
+    @PostMapping(value = "/qa", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> answerHealthQuestion(@RequestBody HealthQARequest request) {
         // 保存会话ID
-        chatHistoryRepository.save("health-qa", chatId);
+        chatHistoryRepository.save("health-qa", request.getChatId());
         
         // 调用AI模型
         return healthQAChatClient.prompt()
-                .user(prompt)
-                .advisors(a -> a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId))
+                .user(request.getPrompt())
+                .advisors(a -> a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, request.getChatId()))
                 .stream()
                 .content();
     }

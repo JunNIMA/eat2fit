@@ -31,12 +31,12 @@ arrayResponseClient.interceptors.request.use(
  * @returns 流式响应的文本内容
  */
 export const chatWithCoach = (prompt: string, chatId: string, onChunk?: (chunk: string) => void): Promise<Response> => {
-  // ChatController指定了produces="text/html;charset=utf-8"
+  // ChatController现在使用MediaType.TEXT_EVENT_STREAM_VALUE
   const url = `/api/ai/chat?prompt=${encodeURIComponent(prompt)}&chatId=${encodeURIComponent(chatId)}`;
   console.log('请求URL:', url);
   
   const headers: HeadersInit = {
-    'Accept': 'text/html',
+    'Accept': 'text/event-stream',
     'Cache-Control': 'no-cache',
   };
   
@@ -57,13 +57,14 @@ export const chatWithCoach = (prompt: string, chatId: string, onChunk?: (chunk: 
  * @returns 流式响应的文本内容
  */
 export const healthQA = (prompt: string, chatId: string): Promise<Response> => {
-  // HealthQAController生成的是流式响应
-  const url = `/api/ai/health/qa?prompt=${encodeURIComponent(prompt)}&chatId=${encodeURIComponent(chatId)}`;
-  console.log('请求URL:', url);
+  // HealthQAController现在使用MediaType.TEXT_EVENT_STREAM_VALUE
+  const url = `/api/ai/health/qa`;
+  console.log('请求URL:', url, '参数:', { prompt, chatId });
   
   const headers: HeadersInit = {
-    'Accept': 'text/html',
+    'Accept': 'text/event-stream',
     'Cache-Control': 'no-cache',
+    'Content-Type': 'application/json',
   };
   
   if (getToken()) {
@@ -73,6 +74,7 @@ export const healthQA = (prompt: string, chatId: string): Promise<Response> => {
   return fetch(url, {
     method: 'POST',
     headers,
+    body: JSON.stringify({ prompt, chatId }),
   });
 };
 
