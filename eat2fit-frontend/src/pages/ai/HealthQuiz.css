@@ -1,0 +1,227 @@
+/* 问题卡片样式 */
+.question-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.question-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* 选项样式 */
+.option-item {
+  transition: transform 0.2s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.option-item:hover {
+  background-color: #f9f0ff;
+  transform: translateX(4px);
+}
+
+.option-circle {
+  box-shadow: 0 2px 6px rgba(114, 46, 209, 0.3);
+}
+
+/* 回答提示样式 */
+.answer-hint {
+  border-top: 1px dashed #eee;
+  padding-top: 12px;
+  color: #888;
+}
+
+/* 增强AI回复消息样式 */
+.ai-message {
+  background-color: white !important;
+  border-radius: 12px !important;
+  max-width: 90% !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.user-message {
+  background-color: #f0f2ff !important;
+  border-radius: 12px !important;
+  max-width: 90% !important;
+  padding: 16px 20px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* 定制滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f9f9f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
+}
+
+/* HealthQuiz 组件样式 */
+
+/* 选项按钮样式 */
+.option-button {
+  border: 1px solid #e8e8e8;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  position: relative;
+  margin: 5px 0 !important;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.option-button:hover {
+  border-color: #1890ff;
+  background-color: #f0f7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.option-button:active {
+  background-color: #d9d6ff;
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 点击效果 */
+.option-button::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #7551db 10%, transparent 10.01%);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transform: scale(10, 10);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.8s;
+}
+
+.option-button:active::after {
+  transform: scale(0, 0);
+  opacity: 0.3;
+  transition: 0s;
+}
+
+/* 选项标记 */
+.option-marker {
+  color: white;
+  background-color: #722ed1;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  font-weight: bold;
+  margin-right: 12px;
+  box-shadow: 0 2px 4px rgba(114, 46, 209, 0.2);
+  flex-shrink: 0;
+}
+
+/* 问题标题样式 */
+.question-title {
+  font-weight: 600;
+  color: #722ed1;
+  margin: 16px 0 12px 0;
+  font-size: 18px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 8px;
+}
+
+/* 消息气泡动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* 正确答案和错误答案高亮 */
+.correct-answer {
+  font-weight: 500;
+  color: #52c41a;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background-color: #f6ffed;
+  border-radius: 4px;
+  border-left: 4px solid #52c41a;
+}
+
+.wrong-answer {
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.wrong-answer::before {
+  content: '✗';
+  color: #ff4d4f;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* 选中选项样式 */
+.selected-option {
+  border-color: #1890ff !important;
+  background-color: #e6f7ff !important;
+}
+
+.selected-option .option-marker {
+  background-color: #1890ff !important;
+}
+
+/* 答案相关样式 */
+.user-answer {
+  font-weight: 500;
+  color: #1890ff;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background-color: #f0f7ff;
+  border-radius: 4px;
+  border-left: 4px solid #1890ff;
+}
+
+.score-display {
+  font-weight: 600;
+  color: #fa8c16;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background-color: #fff7e6;
+  border-radius: 4px;
+  border-left: 4px solid #fa8c16;
+}
+
+.answer-analysis {
+  background-color: #f9f0ff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0 12px 0;
+  font-size: 15px;
+  color: #333;
+  border-left: 4px solid #722ed1;
+} 

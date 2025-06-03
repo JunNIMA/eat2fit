@@ -35,7 +35,7 @@ public class CommonConfiguration {
     @Bean
     public ChatClient chatClient(OpenAiChatModel model, ChatMemory chatMemory) {
         return ChatClient.builder(model)
-                .defaultOptions(ChatOptions.builder().model("qwen-omni-turbo").build())
+                .defaultOptions(ChatOptions.builder().model("qwen-max-latest").build())
                 .defaultSystem(SystemConstants.COMMON_PROMPT)
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .defaultAdvisors(new MessageChatMemoryAdvisor(chatMemory))
@@ -48,7 +48,7 @@ public class CommonConfiguration {
     @Bean
     public ChatClient healthQAChatClient(OpenAiChatModel model, ChatMemory chatMemory) {
         return ChatClient.builder(model)
-                .defaultOptions(ChatOptions.builder().model("qwen-omni-turbo").build())
+                .defaultOptions(ChatOptions.builder().model("qwen-max-latest").build())
                 .defaultSystem(SystemConstants.HEALTH_QA_PROMPT)
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .defaultAdvisors(new MessageChatMemoryAdvisor(chatMemory))

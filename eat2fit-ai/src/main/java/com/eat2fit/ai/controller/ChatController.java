@@ -7,7 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.model.Media;
+import org.springframework.http.MediaType;
 import org.springframework.util.MimeType;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,14 +33,14 @@ public class ChatController {
 
     private final ChatHistoryRepository chatHistoryRepository;
 
-    @RequestMapping(value = "/chat", produces = "text/html;charset=utf-8")
+    @GetMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chat(
             @RequestParam("prompt") String prompt,
             @RequestParam("chatId") String chatId) {
         //1.保存会话id
         chatHistoryRepository.save("chat", chatId);
         //2.请求模型
-            return textChat(prompt, chatId);
+        return textChat(prompt, chatId);
     }
 
 

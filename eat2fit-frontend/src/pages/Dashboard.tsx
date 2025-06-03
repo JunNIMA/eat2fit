@@ -77,11 +77,13 @@ const Dashboard = () => {
   // 请求状态跟踪
   const isDataFetchedRef = useRef(false);
   
+  // 图片加载错误处理
+  const [imgErrorMap, setImgErrorMap] = useState<Record<number, boolean>>({});
+  // 图片加载状态跟踪
+  const [imgLoadingMap, setImgLoadingMap] = useState<Record<number, boolean>>({});
+  
   // 获取仪表盘数据
   const getDashboardData = async () => {
-    // 如果已经获取了数据，避免重复获取
-    if (isDataFetchedRef.current) return;
-    
     try {
       setLoading(true);
       
@@ -178,9 +180,6 @@ const Dashboard = () => {
           recentActivities: activities
         }));
       }
-      
-      // 标记数据已获取
-      isDataFetchedRef.current = true;
     } catch (error) {
       if (axios.isCancel(error)) {
         console.log('请求已取消', error.message);
@@ -195,9 +194,6 @@ const Dashboard = () => {
   
   // 获取推荐食谱
   const fetchRecommendRecipes = async () => {
-    // 如果已经获取了数据，避免重复获取
-    if (recommendedRecipes.length > 0) return;
-    
     try {
       setRecipesLoading(true);
       
@@ -214,14 +210,32 @@ const Dashboard = () => {
         // 确保每个食谱的图片URL都是有效的
         const recipes = res.data || [];
         
+        // 清除错误状态
+        setImgErrorMap({});
+        
         // 设置推荐食谱数据
         setRecommendedRecipes(recipes);
         
         // 预加载图片
         recipes.forEach(recipe => {
           if (recipe.coverImg) {
+            // 设置图片为加载中状态
+            setImgLoadingMap(prev => ({
+              ...prev,
+              [recipe.id]: true
+            }));
+            
             const img = new Image();
-            img.src = getImageUrl(recipe.coverImg) || '';
+            const imageUrl = getImageUrl(recipe.coverImg) || '';
+            img.src = imageUrl;
+            img.onload = () => {
+              // 确保图片成功加载时清除错误状态并更新加载状态
+              setImgErrorMap(prev => ({
+                ...prev,
+                [recipe.id]: false
+              }));
+              handleImageLoad(recipe.id);
+            };
             img.onerror = () => handleImageError(recipe.id);
           }
         });
@@ -238,6 +252,9 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    // 每次组件装载都重新获取数据
+    isDataFetchedRef.current = false;
+    
     // 获取仪表盘数据
     getDashboardData();
     
@@ -338,13 +355,23 @@ const Dashboard = () => {
     return `${process.env.REACT_APP_API_BASE_URL || '/api'}/${url}`;
   };
   
-  // 图片加载错误处理
-  const [imgErrorMap, setImgErrorMap] = useState<Record<number, boolean>>({});
-  
   const handleImageError = (recipeId: number) => {
     setImgErrorMap(prev => ({
       ...prev,
       [recipeId]: true
+    }));
+    // 结束加载状态
+    setImgLoadingMap(prev => ({
+      ...prev,
+      [recipeId]: false
+    }));
+  };
+
+  // 处理图片加载状态
+  const handleImageLoad = (recipeId: number) => {
+    setImgLoadingMap(prev => ({
+      ...prev,
+      [recipeId]: false
     }));
   };
 
@@ -489,6 +516,8 @@ const Dashboard = () => {
           {recommendedRecipes.map(recipe => {
             // 检查图片是否有错误
             const hasImageError = imgErrorMap[recipe.id];
+            // 检查图片是否正在加载中
+            const isImageLoading = imgLoadingMap[recipe.id];
             // 获取图片URL
             const imageUrl = getImageUrl(recipe.coverImg);
             // 是否显示默认图标
@@ -516,6 +545,28 @@ const Dashboard = () => {
                     >
                       {showDefaultIcon && (
                         <PictureOutlined style={{ fontSize: 32, color: '#52c41a' }} />
+                      )}
+                      {isImageLoading && (
+                        <div style={{ 
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'rgba(255,255,255,0.7)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <div className="ant-spin ant-spin-spinning">
+                            <span className="ant-spin-dot ant-spin-dot-spin">
+                              <i className="ant-spin-dot-item"></i>
+                              <i className="ant-spin-dot-item"></i>
+                              <i className="ant-spin-dot-item"></i>
+                              <i className="ant-spin-dot-item"></i>
+                            </span>
+                          </div>
+                        </div>
                       )}
                       <div 
                         style={{ 

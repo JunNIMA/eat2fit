@@ -295,9 +295,26 @@ const CoachChat: React.FC = () => {
         const { done, value } = await reader.read();
         if (done) break;
         
-        // 解码并添加到响应文本
+        // 解码并处理数据块
         const chunk = decoder.decode(value, { stream: true });
-        responseText += chunk;
+        console.log('收到数据块:', chunk);
+        
+        // 处理SSE格式的数据，每行可能以"data:"开头
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            // 移除"data:"前缀并处理内容
+            const content = line.substring(5).trim();
+            if (content) {
+              responseText += content;
+            }
+          } else if (line.trim() && !line.startsWith(':')) {
+            // 如果不是空行、注释行或标准SSE格式，直接添加
+            responseText += line.trim();
+          }
+          // 忽略空行和注释行
+        }
         
         // 更新消息内容
         setMessages(prev => {
